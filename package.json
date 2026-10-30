@@ -1,0 +1,19 @@
+{
+  "name": "doorman",
+  "private": true,
+  "type": "module",
+  "description": "Know Your Agent checkpoint for PayPal merchants",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev -w @doorman/server",
+    "check:paypal": "npm run check:paypal -w @doorman/server",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
