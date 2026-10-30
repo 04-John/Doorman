@@ -18,14 +18,16 @@
 ---
 
 ## Status
-- **Phase:** 0 (setup). Started late; Phase 1 runs Oct 28–30 to catch up.
-- **Done (Oct 27):** GitHub repo `04-John/Doorman` created (private). PayPal developer login done, 1 US personal sandbox account created. Local repo initialised with `.gitignore`, `.env.example` and the GitHub remote.
-- **Next step:** you create a fresh US business account, the "Doorman" app and a second US personal account, then turn on Log in with PayPal and fill in `.env`.
-- **Blocked on:** nothing
+- **Phase:** 0 (setup), finishing Fri Oct 30. The schedule was re-planned on Oct 30: 12 days left, every later phase shifted.
+- **Done:**
+  - **Oct 27:** GitHub repo `04-John/Doorman` created (private), PayPal developer login, 1 US personal sandbox account.
+  - **Oct 30:** project skeleton built (server, PayPal client, key-check script, README, MIT license), first commit pushed to GitHub.
+- **Next step:** you paste the Client ID and Secret into `.env` and run `npm run check:paypal`. Also make sure the Doorman app sits under a US business account with Log in with PayPal turned on.
+- **Blocked on:** keys in `.env`
 
 ---
 
-## Phase 0: Setup (Sun Oct 25 – Mon Oct 26)
+## Phase 0: Setup (finish by Fri Oct 30)
 
 **You**
 - [ ] Confirm eligibility: you're 18+ and not a resident of Brazil, Quebec, Russia, Crimea, Cuba, Iran, North Korea or a US-sanctioned country.
@@ -47,13 +49,14 @@
 - [ ] Tell me which design tool you'll use. Figma is ideal because I can read your file directly.
 
 **Claude**
-- [ ] Set up the project: TypeScript monorepo, `.gitignore`, `.env.example`, MIT license, README skeleton.
-- [ ] Connect the local repo to your GitHub repo and make the first commit.
+- [x] Set up the project: TypeScript monorepo, `.gitignore`, `.env.example`, MIT license, README skeleton.
+- [x] Connect the local repo to your GitHub repo and make the first commit.
+- [x] Add a key-check command (`npm run check:paypal`) that confirms the sandbox keys, Log in with PayPal and the business account's country.
 - [ ] Install the PayPal AI-Toolkit plugin and APIMatic's PayPal context plugin. Using the APIMatic plugin makes us eligible for its sponsor prize, and we'll document that we used it.
 
 ---
 
-## Phase 1: Prove the risky parts (Wed Oct 28 – Fri Oct 30, moved one day)
+## Phase 1: Prove the risky parts (Sat Oct 31 – Sun Nov 1)
 
 **Claude**
 - [ ] PayPal access: fetch and cache a sandbox token, and attach a unique request ID to every payment call so a retry can't charge twice.
@@ -64,21 +67,21 @@
 - [ ] Agent-facing server: a bare MCP server with one tool, `search_products`.
 
 **You**
-- [ ] **By Wed Oct 28:** rough wireframes of the 5 screens (sketches or photos are fine):
+- [ ] **By Sat Oct 31:** rough wireframes of the 5 screens (sketches or photos are fine):
   1. Merchant onboarding (connect PayPal, products, rules in plain English)
   2. Live agent traffic dashboard (the hero screen)
   3. Decision detail ("why was this agent allowed, stepped up or blocked?")
   4. Customer "link your agent" page (log in with PayPal, set cap and expiry, revoke)
   5. Buyer approval page and a minimal storefront
 
-**Checkpoint, Fri Oct 30 (go/no-go)**
+**Checkpoint, Sun Nov 1 (go/no-go)**
 - [ ] Authorize → approve → capture/void works in the sandbox.
 - [ ] Log in with PayPal works. **If not:** we link the pass to the customer on their first approved PayPal order instead.
 - [ ] Signed request verified end to end.
 
 ---
 
-## Phase 2: Core engine (Sat Oct 31 – Tue Nov 3)
+## Phase 2: Core engine (Mon Nov 2 – Wed Nov 4)
 
 **Claude**
 - [ ] Database on Neon (free Postgres): merchants, products, drops, agents, passes, carts, orders, decisions, events.
@@ -103,17 +106,17 @@
 - [ ] **One-click "Run the drop" simulation** so judges can see everything without any API keys.
 
 **You**
-- [ ] **By Mon Nov 2:** final designs for all 5 screens, as a Figma link or exported images. These are the designs we stick with.
+- [ ] **By Tue Nov 3:** final designs for all 5 screens, as a Figma link or exported images. These are the designs we stick with.
 
-**Checkpoint, Tue Nov 3**
+**Checkpoint, Wed Nov 4**
 - [ ] A full drop runs end to end from the terminal: good agent buys, bots get blocked, losers voided, events logged.
 
 ---
 
-## Phase 3: Interface and hosting (Wed Nov 4 – Sat Nov 7)
+## Phase 3: Interface and hosting (Thu Nov 5 – Sun Nov 8)
 
 **Claude**
-- [ ] **Deploy first (Nov 4):** server on Render, database on Neon, public URL working.
+- [ ] **Deploy first (Nov 5):** server on Render, database on Neon, public URL working.
   - Needs: you sign up for Render with GitHub and look for the hackathon credit (Render sponsor page or Discord).
 - [ ] Build the 5 screens from your designs (React).
 - [ ] Use AG Grid for the live traffic table (sponsor prize target) and update it live as agents arrive.
@@ -123,11 +126,11 @@
 - [ ] Review each screen as it lands and send fixes in one list per day.
 - [ ] Act as the merchant: run the onboarding and a drop yourself and note anything confusing.
 
-**Checkpoint, Sat Nov 7: feature freeze.** After this, only bug fixes and polish.
+**Checkpoint, Sun Nov 8: feature freeze.** After this, only bug fixes and polish.
 
 ---
 
-## Phase 4: Polish and video (Sun Nov 8 – Tue Nov 10)
+## Phase 4: Polish and video (Mon Nov 9 – Tue Nov 10)
 
 **Claude**
 - [ ] Clone the repo fresh and follow the README exactly. Fix anything that breaks.
