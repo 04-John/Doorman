@@ -75,12 +75,8 @@
 - [x] Test bench at `http://127.0.0.1:5173/lab.html` (start everything with `npm run dev`).
 
 **You**
-- [ ] **By Sat Oct 31:** rough wireframes of the 5 screens (sketches or photos are fine):
-  1. Merchant onboarding (connect PayPal, products, rules in plain English)
-  2. Live agent traffic dashboard (the hero screen)
-  3. Decision detail ("why was this agent allowed, stepped up or blocked?")
-  4. Customer "link your agent" page (log in with PayPal, set cap and expiry, revoke)
-  5. Buyer approval page and a minimal storefront
+- [x] ~~Rough sketches~~ Replaced on Oct 31: you design directly in Figma from `docs/DESIGN_BRIEF.md` (7 screens, all states, sample data).
+- [ ] **By Sun Nov 1:** Screen 1 (Live agent dashboard) and its components in Figma, so the build can start.
 
 **Checkpoint, Sun Nov 1 (go/no-go): PASSED Oct 31, a day early**
 - [x] Authorize → approve → capture/void works in the sandbox.
@@ -114,7 +110,7 @@
 - [ ] **One-click "Run the drop" simulation** so judges can see everything without any API keys.
 
 **You**
-- [ ] **By Tue Nov 3:** final designs for all 5 screens, as a Figma link or exported images. These are the designs we stick with.
+- [ ] **By Tue Nov 3:** final designs for all 7 screens in Figma (see `docs/DESIGN_BRIEF.md`). Share the link with view access. These are the designs we stick with.
 
 **Checkpoint, Wed Nov 4**
 - [ ] A full drop runs end to end from the terminal: good agent buys, bots get blocked, losers voided, events logged.
@@ -126,7 +122,7 @@
 **Claude**
 - [ ] **Deploy first (Nov 5):** server on Render, database on Neon, public URL working.
   - Needs: you sign up for Render with GitHub and look for the hackathon credit (Render sponsor page or Discord).
-- [ ] Build the 5 screens from your designs (React).
+- [ ] Build the 7 screens from your designs (React).
 - [ ] Use AG Grid for the live traffic table (sponsor prize target) and update it live as agents arrive.
 - [ ] Add the live URL to the PayPal app's Log in with PayPal return URLs.
 
@@ -165,7 +161,7 @@
 
 ## Scope
 
-**Must have:** agent signatures, agent pass, the store tools for agents, risk rules with reasons, drop mode, PayPal authorize/capture/void with the payer cross-check, webhooks, AI explanations, the simulation button, the 5 screens, hosted demo, README, video.
+**Must have:** agent signatures, agent pass, the store tools for agents, risk rules with reasons, drop mode, PayPal authorize/capture/void with the payer cross-check, webhooks, AI explanations, the simulation button, the 7 screens (storefront and demo hub kept simple), hosted demo, README, video.
 
 **Only if we're ahead:** Venmo button on the approval page, importing products from PayPal's catalog, a Postman collection.
 
