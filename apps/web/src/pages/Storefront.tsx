@@ -81,11 +81,34 @@ export default function Storefront() {
       <header className="sf-header sf-gutter">
         <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", textTransform: "uppercase" }}>Static Supply</span>
         <nav className="sf-nav" aria-label="Store">
-          <a href="#drop">Drop</a>
-          <a href="#shop">Shop</a>
-          <a href="#agents">Shop with AI</a>
+          {[
+            ["drop", "Drop"],
+            ["shop", "Shop"],
+            ["agents", "Shop with AI"],
+          ].map(([id, label]) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              onClick={(e) => {
+                // Scroll smoothly to the section, even when it's already partly on screen.
+                const target = document.getElementById(id!);
+                if (!target) return;
+                e.preventDefault();
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+                history.replaceState(null, "", `#${id}`);
+              }}
+            >
+              {label}
+            </a>
+          ))}
         </nav>
-        <span style={{ marginLeft: "auto", fontSize: 15, fontWeight: 500 }}>Cart (0)</span>
+        <button
+          type="button"
+          onClick={() => toast("This demo store sells through AI agents. Link your assistant below.")}
+          style={{ marginLeft: "auto", border: 0, background: "transparent", fontSize: 15, fontWeight: 500, color: "#15171C", padding: "6px 0" }}
+        >
+          Cart (0)
+        </button>
       </header>
 
       {failed && !store ? (

@@ -2,7 +2,7 @@
 // /link/:id comes from an agent asking to be linked; /link alone shows "My passes".
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
-import { api, loginHref, type Customer, type LinkRequest, type Pass } from "../lib/api";
+import { api, ApiError, loginHref, type Customer, type LinkRequest, type Pass } from "../lib/api";
 import { expiresIn, money, shortId } from "../lib/format";
 import { Skeleton } from "../ui/bits";
 import { BigButton, MobileShell, PayPalLoginButton } from "../ui/mobile";
@@ -112,8 +112,14 @@ function PassesList({ customer, onLogout }: { customer: Customer; onLogout: () =
   const toast = useToast();
 
   useEffect(() => {
-    api.passes().then(setPasses);
-  }, []);
+    api
+      .passes()
+      .then(setPasses)
+      .catch(() => {
+        setPasses([]);
+        toast("Couldn't load your passes. Refresh to try again.");
+      });
+  }, [toast]);
 
   async function revoke(pass: Pass) {
     await api.revokePass(pass.id);
@@ -245,12 +251,18 @@ export default function LinkAgent() {
   const [created, setCreated] = useState<Pass | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unreachable, setUnreachable] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    api.me().then(setCustomer);
-    if (id) api.linkRequest(id).then(setRequest).catch(() => setRequest(null));
+    setUnreachable(false);
+    api
+      .me()
+      .then(setCustomer)
+      .catch(() => setUnreachable(true));
+    if (id) api.linkRequest(id).then(setRequest).catch((err: unknown) => (err instanceof ApiError && err.status === 404 ? setRequest(null) : setUnreachable(true)));
     else setRequest(null);
-  }, [id]);
+  }, [id, attempt]);
 
   const capCents = custom != null ? Math.round(Number(custom) * 100) : cap;
   const capValid = Number.isFinite(capCents) && capCents >= 100 && capCents <= 1_000_000;
@@ -282,7 +294,17 @@ export default function LinkAgent() {
 
   return (
     <MobileShell brand="doorman" right={<span style={{ fontSize: 14, fontWeight: 500, color: "#4A4D55" }}>{nav}</span>}>
-      {loading ? (
+      {unreachable ? (
+        <div role="alert" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "center", gap: 10 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>Couldn't reach Doorman</h1>
+          <div style={{ fontSize: 15.5, color: "#4A4D55", lineHeight: 1.5 }}>The server didn't respond. Check it's running, then try again.</div>
+          <div style={{ marginTop: 12 }}>
+            <BigButton variant="secondary" onClick={() => setAttempt((n) => n + 1)}>
+              Try again
+            </BigButton>
+          </div>
+        </div>
+      ) : loading ? (
         <div aria-busy="true" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Skeleton width="80%" height={28} />
           <Skeleton width="100%" height={60} />
