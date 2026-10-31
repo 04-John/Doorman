@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doorman test bench</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 720px; margin: 32px auto; padding: 0 16px; line-height: 1.5; }
+      section { border: 1px solid #ccc; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+      h2 { margin-top: 0; font-size: 1.1rem; }
+      button, .button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid #888; background: #f4f4f4; cursor: pointer; text-decoration: none; color: inherit; display: inline-block; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .ok { color: #0a7d2c; font-weight: 600; }
+      .bad { color: #b42318; font-weight: 600; }
+      pre { background: #f6f6f6; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Doorman test bench</h1>
+    <p>Phase 1 checks: Log in with PayPal, then a purchase that is held (authorized) and later captured or voided.</p>
+
+    <section>
+      <h2>1. Log in with PayPal</h2>
+      <p id="login-status">Checking…</p>
+      <a class="button" href="/auth/paypal/start">Log in with PayPal (use a sandbox buyer)</a>
+    </section>
+
+    <section>
+      <h2>2. Buy the test hoodie ($68, sandbox money)</h2>
+      <paypal-button id="paypal-button" type="pay" hidden></paypal-button>
+      <p id="checkout-status">Loading PayPal…</p>
+    </section>
+
+    <section>
+      <h2>3. Capture or void the held payment</h2>
+      <p id="match-status">Approve a purchase first.</p>
+      <button id="capture" disabled>Capture (charge it)</button>
+      <button id="void" disabled>Void (release the hold)</button>
+    </section>
+
+    <section>
+      <h2>Log</h2>
+      <pre id="log"></pre>
+    </section>
+
+    <script type="module" src="/src/lab.ts"></script>
+  </body>
+</html>

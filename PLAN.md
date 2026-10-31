@@ -18,12 +18,15 @@
 ---
 
 ## Status
-- **Phase:** 0 (setup), finishing Fri Oct 30. The schedule was re-planned on Oct 30: 12 days left, every later phase shifted.
+- **Phase:** 1 (prove the risky parts), checkpoint Sun Nov 1. The schedule was re-planned on Oct 30: 12 days left, every later phase shifted.
 - **Done:**
   - **Oct 27:** GitHub repo `04-John/Doorman` created (private), PayPal developer login, 1 US personal sandbox account.
   - **Oct 30:** project skeleton built (server, PayPal client, key-check script, README, MIT license), first commit pushed to GitHub.
-- **Next step:** you paste the Client ID and Secret into `.env` and run `npm run check:paypal`. Also make sure the Doorman app sits under a US business account with Log in with PayPal turned on.
-- **Blocked on:** keys in `.env`
+  - **Oct 31:**
+    - Doorman app created under the US business account, with Log in with PayPal on (return URL on 127.0.0.1). Keys verified.
+    - Phase 1 built: payments (authorize, capture, void), Log in with PayPal, payer-ID match, agent signatures, the first MCP store tool, and the test bench.
+- **Next step:** you run the browser test on the test bench (login, approve, capture or void, and the mismatch test with buyer 2).
+- **Blocked on:** your browser test
 
 ---
 
@@ -34,16 +37,16 @@
 - [ ] Devpost: open https://paypalaihackathon.devpost.com and click **Join hackathon**.
 - [x] GitHub: private repo created at https://github.com/04-John/Doorman
 - [x] PayPal Developer: logged in at https://developer.paypal.com
-  - [ ] Testing Tools → Sandbox Accounts → **Create account**: a new **Business** account, country **United States**. Don't use the NG accounts as the merchant.
+  - [x] Testing Tools → Sandbox Accounts → **Create account**: a new **Business** account, country **United States** (`sb-vg98x49213061@business.example.com`). Don't use the NG accounts as the merchant.
   - [x] First US Personal account (buyer 1)
   - [ ] Second US Personal account (buyer 2, used for the "wrong person approved it" test)
-  - [ ] Apps & Credentials (Sandbox) → **Create App** named "Doorman", type Merchant, linked to the new US Business account.
-  - [ ] In the app: **Other features** → tick **Log in with PayPal** → **Advanced Settings**:
-    - Return URL `http://localhost:5173/auth/paypal/callback`. If it's rejected, use `http://127.0.0.1:5173/auth/paypal/callback` and tell Claude which one was accepted.
+  - [x] Apps & Credentials (Sandbox) → **Create App** named "Doorman", type Merchant, linked to the new US Business account.
+  - [x] In the app: **Other features** → tick **Log in with PayPal** → **Advanced Settings**:
+    - Return URL `http://127.0.0.1:5173/auth/paypal/callback`. PayPal rejected `localhost`, so always open the app at `http://127.0.0.1:5173`.
     - Information: Full name, Email, Account verification status, PayPal account ID (payer ID)
     - Privacy policy URL and User agreement URL: `https://example.com` for now
     - Save
-  - [ ] Paste the app's Client ID and Secret into `doorman/.env`. Don't send them in chat.
+  - [x] Paste the app's Client ID and Secret into `doorman/.env`. Don't send them in chat.
 - [ ] Google AI Studio (https://aistudio.google.com): create a free Gemini API key and add it to `.env`.
 - [ ] Join the PayPal Developer Discord (https://discord.gg/sJ2G6DyvSK) for help when the sandbox misbehaves.
 - [ ] Tell me which design tool you'll use. Figma is ideal because I can read your file directly.
@@ -59,12 +62,13 @@
 ## Phase 1: Prove the risky parts (Sat Oct 31 – Sun Nov 1)
 
 **Claude**
-- [ ] PayPal access: fetch and cache a sandbox token, and attach a unique request ID to every payment call so a retry can't charge twice.
-- [ ] Payments: create an order that **authorizes** without charging, have the buyer approve on a test page (PayPal JS SDK v6), then **capture** or **void** it.
-- [ ] Log in with PayPal: sign a sandbox buyer in and read `verified_account`, email and user ID.
-- [ ] Match the payer ID from Log in with PayPal (the "PayPal account ID" attribute) against the payer ID on the approved order.
-- [ ] Agent signatures: an agent signs each request with an Ed25519 key (RFC 9421 HTTP Message Signatures), and Doorman verifies the signature.
-- [ ] Agent-facing server: a bare MCP server with one tool, `search_products`.
+- [x] PayPal access: fetch and cache a sandbox token, and attach a unique request ID to every payment call so a retry can't charge twice.
+- [ ] Payments: create an order that **authorizes** without charging, have the buyer approve on a test page (PayPal JS SDK v6), then **capture** or **void** it. *Built. Order creation is verified in the sandbox; waiting on your browser test.*
+- [ ] Log in with PayPal: sign a sandbox buyer in and read `verified_account`, email and user ID. *Built. The redirect reaches PayPal; waiting on your browser test.*
+- [ ] Match the payer ID from Log in with PayPal (the "PayPal account ID" attribute) against the payer ID on the approved order. *Built; waiting on your browser test.*
+- [x] Agent signatures: an agent signs each request with an Ed25519 key (RFC 9421 HTTP Message Signatures), and Doorman verifies the signature. 6 tests pass. `npm run demo:agent` shows unsigned, signed and tampered requests handled correctly.
+- [x] Agent-facing server: a bare MCP server with one tool, `search_products`.
+- [x] Test bench at `http://127.0.0.1:5173/lab.html` (start everything with `npm run dev`).
 
 **You**
 - [ ] **By Sat Oct 31:** rough wireframes of the 5 screens (sketches or photos are fine):

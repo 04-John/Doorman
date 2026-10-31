@@ -12,8 +12,14 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "concurrently -k -n server,web -c blue,green \"npm run dev -w @doorman/server\" \"npm run dev -w @doorman/web\"",
     "dev:server": "npm run dev -w @doorman/server",
     "check:paypal": "npm run check:paypal -w @doorman/server",
+    "demo:agent": "npm run demo:agent -w @doorman/server",
+    "test": "npm run test -w @doorman/server",
     "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
   }
 }
