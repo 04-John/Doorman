@@ -40,6 +40,13 @@ export async function endDrop(dropId: string) {
   await db.update(schema.drops).set({ status: "ended", endedAt: new Date() }).where(eq(schema.drops.id, dropId));
 }
 
+// "Reset": close the current drop and hide it, so the dashboard shows READY.
+export async function resetDrop() {
+  await db.update(schema.drops).set({ status: "ended", endedAt: new Date() }).where(eq(schema.drops.status, "live"));
+  await db.update(schema.drops).set({ cleared: true }).where(eq(schema.drops.cleared, false));
+  await db.update(schema.products).set({ stock: DROP_STOCK }).where(eq(schema.products.id, DROP_PRODUCT_ID));
+}
+
 // Takes stock atomically, so two approvals can't both get the last hoodie.
 export async function reserveStock(productId: string, quantity: number): Promise<number | null> {
   const [row] = await db

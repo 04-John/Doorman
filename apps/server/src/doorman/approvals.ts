@@ -1,6 +1,6 @@
 // What happens after an agent checks out: the customer opens the approval
 // link, approves in PayPal, and Doorman runs the last checks before charging.
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, sum } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { authorizeOrder, captureAuthorization, voidAuthorization } from "../paypal/orders.js";
 import type { OrderRow } from "./checkout.js";
@@ -41,6 +41,15 @@ async function context(order: OrderRow) {
 export async function approvalView(token: string) {
   const order = await loadOrder(token);
   const { agent, pass, expected, product } = await context(order);
+  const [payer] = order.approvedPayerId
+    ? await db.select().from(schema.customers).where(eq(schema.customers.payerId, order.approvedPayerId))
+    : [];
+  const [used] = pass
+    ? await db
+        .select({ cents: sum(schema.orders.amountCents) })
+        .from(schema.orders)
+        .where(and(eq(schema.orders.passId, pass.id), inArray(schema.orders.status, ["held", "charged"])))
+    : [];
   return {
     status: order.status,
     stepUp: order.stepUp,
@@ -49,7 +58,10 @@ export async function approvalView(token: string) {
     quantity: order.quantity,
     amountCents: order.amountCents,
     agent: agent ? { name: agent.name, operator: agent.operator } : null,
-    pass: pass ? { capCents: pass.capCents, expiresAt: pass.expiresAt, customerName: expected?.name ?? null } : null,
+    pass: pass
+      ? { capCents: pass.capCents, expiresAt: pass.expiresAt, customerName: expected?.name ?? null, usedCents: Number(used?.cents ?? 0) }
+      : null,
+    paidBy: payer?.name ?? order.approvedPayerEmail ?? null,
     releaseReason: order.releaseReason,
   };
 }

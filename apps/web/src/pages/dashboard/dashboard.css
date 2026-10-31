@@ -1,0 +1,72 @@
+/* Live traffic grid details that AG Grid's theme params don't cover. */
+.dm-grid .ag-header-cell-text {
+  letter-spacing: 0.02em;
+}
+.dm-grid .dm-header-right .ag-header-cell-label {
+  justify-content: flex-end;
+}
+.dm-grid .ag-row {
+  cursor: pointer;
+}
+.dm-grid .ag-cell {
+  display: flex;
+  align-items: center;
+  line-height: 1.2;
+}
+.dm-grid .ag-cell-value {
+  min-width: 0;
+}
+.dm-grid .ag-row .ag-cell:first-child {
+  padding-left: 16px;
+}
+.dm-grid .ag-row .ag-cell:last-child {
+  padding-right: 16px;
+  justify-content: flex-end;
+}
+.dm-grid .dm-cell-time {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #4a4d55;
+}
+.dm-grid .dm-cell-muted {
+  color: #4a4d55;
+}
+.dm-grid .dm-cell-empty {
+  color: #8e919a;
+}
+.dm-grid .dm-cell-reason {
+  font-size: 13.5px;
+  color: #4a4d55;
+}
+.dm-grid .dm-cell-reason .ag-cell-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Selected row: darker fill plus an ink bar on the left. */
+.dm-grid .ag-row-selected {
+  box-shadow: inset 3px 0 0 #15171c;
+}
+
+/* New row: warm flash with an amber bar, held 1.8s then fades over 0.9s. */
+.dm-grid .ag-row.dm-row-fresh:not(.ag-row-selected) {
+  animation: dm-row-flash 2.7s ease forwards;
+}
+@keyframes dm-row-flash {
+  0%,
+  66% {
+    background-color: #fbf5e4;
+    box-shadow: inset 3px 0 0 #c98a1b;
+  }
+  100% {
+    background-color: #ffffff;
+    box-shadow: inset 3px 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-grid .ag-row.dm-row-fresh {
+    animation: none;
+  }
+}

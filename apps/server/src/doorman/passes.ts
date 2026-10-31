@@ -1,7 +1,7 @@
 // Agent passes. An agent asks to be linked; the customer logs in with PayPal,
 // sets a cap and expiry, and approves; the agent then collects its pass token once.
 import { randomBytes } from "node:crypto";
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import type { AgentRow } from "../agents/registry.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
@@ -91,6 +91,9 @@ export async function passesFor(customer: CustomerRow) {
       createdAt: schema.passes.createdAt,
       agentName: schema.agents.name,
       operator: schema.agents.operator,
+      agentKeyId: schema.agents.keyId,
+      // What the agent has actually spent with this pass.
+      usedCents: sql<number>`coalesce((select sum(${schema.orders.amountCents}) from ${schema.orders} where ${schema.orders.passId} = ${schema.passes.id} and ${schema.orders.status} in ('held', 'charged')), 0)::int`,
     })
     .from(schema.passes)
     .innerJoin(schema.agents, eq(schema.agents.keyId, schema.passes.agentKeyId))

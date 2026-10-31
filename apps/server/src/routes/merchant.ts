@@ -1,48 +1,61 @@
 // Merchant dashboard API. Open for the demo so judges can use it without an account.
-import { and, count, countDistinct, desc, eq, inArray, sum } from "drizzle-orm";
+import { and, asc, count, countDistinct, desc, eq, inArray, sum } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
+import { explain } from "../ai/explain.js";
+import { aiEnabled } from "../ai/model.js";
+import { compileRules, describePolicy } from "../ai/rules.js";
 import { setAgentBlocked } from "../agents/registry.js";
 import { db, schema } from "../db/client.js";
 import { ApprovalError, releaseByMerchant } from "../doorman/approvals.js";
 import { approvalUrl } from "../doorman/checkout.js";
+import type { Check } from "../doorman/engine.js";
 import { eventBus, type EventRow } from "../doorman/events.js";
 import { policySchema } from "../doorman/policy.js";
-import { currentDrop, getProduct, getRules, saveRules } from "../doorman/store.js";
-import { explain } from "../ai/explain.js";
-import { aiEnabled } from "../ai/model.js";
-import { compileRules, describePolicy } from "../ai/rules.js";
+import { currentDrop, getProduct, getRules, resetDrop, saveRules, type DropRow } from "../doorman/store.js";
+import { paypal } from "../paypal/client.js";
 import { avaTranscript, runDrop, simulationRunning } from "../sim/run.js";
 
-async function summary() {
+// The drop the dashboard shows: the latest one, unless it was reset.
+async function shownDrop(): Promise<DropRow | undefined> {
   const drop = await currentDrop();
-  if (!drop) return { drop: null, kpis: null, simulationRunning: simulationRunning() };
-  const product = await getProduct(drop.productId);
+  return drop && !drop.cleared ? drop : undefined;
+}
 
-  const byDecision = await db
-    .select({ decision: schema.events.decision, n: count() })
-    .from(schema.events)
-    .where(and(eq(schema.events.dropId, drop.id), inArray(schema.events.action, ["browse", "cart", "checkout"])))
-    .groupBy(schema.events.decision);
-  const [visitors] = await db
-    .select({ n: countDistinct(schema.events.visitorKey) })
-    .from(schema.events)
-    .where(eq(schema.events.dropId, drop.id));
-  const money = await db
-    .select({ status: schema.orders.status, cents: sum(schema.orders.amountCents) })
-    .from(schema.orders)
-    .where(eq(schema.orders.dropId, drop.id))
-    .groupBy(schema.orders.status);
+async function summary() {
+  const drop = await shownDrop();
+  if (!drop) return { drop: null, kpis: null, simulationRunning: simulationRunning() };
+  // Independent queries, run together to keep the dashboard snappy.
+  const [product, byDecision, [visitors], [bots], money] = await Promise.all([
+    getProduct(drop.productId),
+    db
+      .select({ decision: schema.events.decision, n: count() })
+      .from(schema.events)
+      .where(and(eq(schema.events.dropId, drop.id), inArray(schema.events.action, ["browse", "cart", "checkout"])))
+      .groupBy(schema.events.decision),
+    db.select({ n: countDistinct(schema.events.visitorKey) }).from(schema.events).where(eq(schema.events.dropId, drop.id)),
+    db
+      .select({ n: countDistinct(schema.events.visitorKey) })
+      .from(schema.events)
+      .where(and(eq(schema.events.dropId, drop.id), eq(schema.events.tier, "unknown"), inArray(schema.events.decision, ["blocked", "throttled"]))),
+    db
+      .select({ status: schema.orders.status, cents: sum(schema.orders.amountCents), units: sum(schema.orders.quantity) })
+      .from(schema.orders)
+      .where(eq(schema.orders.dropId, drop.id))
+      .groupBy(schema.orders.status),
+  ]);
 
   const decisions = Object.fromEntries(byDecision.map((r) => [r.decision, r.n]));
-  const cents = Object.fromEntries(money.map((r) => [r.status, Number(r.cents ?? 0)]));
+  const byStatus = Object.fromEntries(money.map((r) => [r.status, { cents: Number(r.cents ?? 0), units: Number(r.units ?? 0) }]));
   return {
     drop: {
       id: drop.id,
       status: drop.status,
       productName: product?.name,
+      priceCents: product?.priceCents ?? 0,
       stockLeft: product?.stock ?? 0,
       stockTotal: drop.stockTotal,
+      sold: byStatus.charged?.units ?? 0,
       startedAt: drop.startedAt,
       endedAt: drop.endedAt,
     },
@@ -52,32 +65,70 @@ async function summary() {
       stepUp: decisions.step_up ?? 0,
       throttled: decisions.throttled ?? 0,
       blocked: decisions.blocked ?? 0,
-      awaitingApprovalCents: cents.awaiting_approval ?? 0,
-      heldCents: cents.held ?? 0,
-      chargedCents: cents.charged ?? 0,
+      awaitingApprovalCents: byStatus.awaiting_approval?.cents ?? 0,
+      heldCents: byStatus.held?.cents ?? 0,
+      chargedCents: byStatus.charged?.cents ?? 0,
+      botsBlocked: bots?.n ?? 0,
     },
     simulationRunning: simulationRunning(),
   };
 }
 
+// The payer match is only known once the customer has approved in PayPal, so
+// fill it in from the order rather than the moment of the decision.
+function withPayerMatch(checks: Check[], order: { status: string; releaseReason: string | null } | undefined, payerName: string | null): Check[] {
+  if (!order) return checks;
+  const mismatch = order.releaseReason?.startsWith("Paid from a different PayPal account");
+  const payer: Check =
+    order.status === "charged"
+      ? { id: "payer_match", status: "pass", detail: `${payerName ?? "The pass holder"} paid` }
+      : mismatch
+        ? { id: "payer_match", status: "fail", detail: "Different account paid" }
+        : { id: "payer_match", status: "na", detail: "After approval in PayPal" };
+  return checks.some((c) => c.id === "payer_match") ? checks.map((c) => (c.id === "payer_match" ? payer : c)) : [...checks, payer];
+}
+
 async function eventDetail(id: string) {
   const [event] = await db.select().from(schema.events).where(eq(schema.events.id, id));
   if (!event) return null;
-  const [agent] = event.agentKeyId
-    ? await db.select().from(schema.agents).where(eq(schema.agents.keyId, event.agentKeyId))
-    : [];
-  const [order] = event.orderId ? await db.select().from(schema.orders).where(eq(schema.orders.id, event.orderId)) : [];
-  const [pass] = order?.passId ? await db.select().from(schema.passes).where(eq(schema.passes.id, order.passId)) : [];
-  // Timeline: everything that happened to this order, or this visitor's recent steps.
-  const timeline = await db
-    .select()
-    .from(schema.events)
-    .where(event.orderId ? eq(schema.events.orderId, event.orderId) : eq(schema.events.visitorKey, event.visitorKey))
-    .orderBy(desc(schema.events.at))
-    .limit(20);
+  const none = Promise.resolve([] as never[]);
+  const [[agent], [order], [firstSeen], timeline, before] = await Promise.all([
+    event.agentKeyId ? db.select().from(schema.agents).where(eq(schema.agents.keyId, event.agentKeyId)) : none,
+    event.orderId ? db.select().from(schema.orders).where(eq(schema.orders.id, event.orderId)) : none,
+    db
+      .select({ at: schema.events.at })
+      .from(schema.events)
+      .where(event.dropId ? and(eq(schema.events.visitorKey, event.visitorKey), eq(schema.events.dropId, event.dropId)) : eq(schema.events.visitorKey, event.visitorKey))
+      .orderBy(asc(schema.events.at))
+      .limit(1),
+    // Timeline: everything that happened to this order, or this visitor's recent steps.
+    db
+      .select()
+      .from(schema.events)
+      .where(event.orderId ? eq(schema.events.orderId, event.orderId) : eq(schema.events.visitorKey, event.visitorKey))
+      .orderBy(desc(schema.events.at))
+      .limit(20),
+    // For an order, also show how the agent got there (browse and cart before checkout).
+    event.orderId && event.agentKeyId && event.dropId
+      ? db
+          .select()
+          .from(schema.events)
+          .where(and(eq(schema.events.visitorKey, event.visitorKey), eq(schema.events.dropId, event.dropId), inArray(schema.events.action, ["browse", "cart"])))
+          .orderBy(desc(schema.events.at))
+          .limit(4)
+      : none,
+  ]);
+  const [[pass], [customer]] = await Promise.all([
+    order?.passId ? db.select().from(schema.passes).where(eq(schema.passes.id, order.passId)) : none,
+    order?.expectedPayerId ? db.select().from(schema.customers).where(eq(schema.customers.payerId, order.expectedPayerId)) : none,
+  ]);
+
   return {
-    event,
-    agent: agent && { keyId: agent.keyId, name: agent.name, operator: agent.operator, blocked: agent.blocked, firstSeen: agent.registeredAt },
+    event: { ...event, checks: withPayerMatch(event.checks, order, customer?.name ?? null) },
+    source: event.visitorKey.startsWith("ip:") ? event.visitorKey.slice(3) : null,
+    firstSeen: firstSeen?.at ?? event.at,
+    agent: agent && { keyId: agent.keyId, name: agent.name, operator: agent.operator, blocked: agent.blocked, registeredAt: agent.registeredAt },
+    customer: customer ? { name: customer.name, verified: customer.verified } : null,
     pass: pass && { capCents: pass.capCents, expiresAt: pass.expiresAt, revokedAt: pass.revokedAt },
     order: order && {
       id: order.id,
@@ -87,23 +138,43 @@ async function eventDetail(id: string) {
       releaseReason: order.releaseReason,
       paypal: { orderId: order.paypalOrderId, authorizationId: order.authorizationId, captureId: order.captureId },
     },
-    timeline: timeline.reverse(),
-    explanation: await explain({ event, order, timeline }),
+    timeline: [...before.filter((b) => b.at < (timeline.at(-1)?.at ?? event.at)), ...timeline].sort((a, b) => +a.at - +b.at),
+    explanation: event.explanation ? { text: event.explanation, source: "ai" as const } : null,
   };
+}
+
+// The PayPal business account this store is connected to (looked up once).
+let merchantInfo: Promise<{ connected: boolean; email: string | null; merchantId: string | null }> | null = null;
+function merchant() {
+  merchantInfo ??= paypal<{ payer_id?: string; emails?: { value: string; primary?: boolean }[] }>("/v1/identity/oauth2/userinfo?schema=paypalv1.1")
+    .then((me) => ({
+      connected: true,
+      email: me.emails?.find((e) => e.primary)?.value ?? me.emails?.[0]?.value ?? null,
+      merchantId: me.payer_id ?? null,
+    }))
+    .catch(() => {
+      merchantInfo = null;
+      return { connected: false, email: null, merchantId: null };
+    });
+  return merchantInfo;
 }
 
 export const merchantRoutes = new Hono()
   .get("/api/dashboard", async (c) => c.json(await summary()))
 
+  .get("/api/merchant", async (c) => c.json(await merchant()))
+
   .get("/api/events", async (c) => {
-    const drop = await currentDrop();
+    const drop = await shownDrop();
+    if (!drop) return c.json({ events: [] });
     const rows = await db
-      .select()
+      .select({ event: schema.events, orderStatus: schema.orders.status })
       .from(schema.events)
-      .where(drop ? eq(schema.events.dropId, drop.id) : undefined)
+      .leftJoin(schema.orders, eq(schema.orders.id, schema.events.orderId))
+      .where(eq(schema.events.dropId, drop.id))
       .orderBy(desc(schema.events.at))
-      .limit(Math.min(Number(c.req.query("limit") ?? 200), 500));
-    return c.json({ events: rows });
+      .limit(Math.min(Number(c.req.query("limit") ?? 300), 1000));
+    return c.json({ events: rows.map((r) => ({ ...r.event, orderStatus: r.orderStatus })) });
   })
 
   // Live feed for the dashboard (Server-Sent Events).
@@ -126,10 +197,38 @@ export const merchantRoutes = new Hono()
     return detail ? c.json(detail) : c.json({ error: "not_found" }, 404);
   })
 
+  // Written on demand, so the detail panel can open instantly and show a loading state.
+  .get("/api/events/:id/explanation", async (c) => {
+    const id = c.req.param("id");
+    const [event] = await db.select().from(schema.events).where(eq(schema.events.id, id));
+    if (!event) return c.json({ error: "not_found" }, 404);
+    const [order] = event.orderId ? await db.select().from(schema.orders).where(eq(schema.orders.id, event.orderId)) : [];
+    const timeline = event.orderId
+      ? await db.select().from(schema.events).where(eq(schema.events.orderId, event.orderId)).orderBy(asc(schema.events.at))
+      : [];
+    return c.json(await explain({ event, order, timeline }));
+  })
+
   .post("/api/drop/run", async (c) => {
     if (simulationRunning()) return c.json({ error: "already_running" }, 409);
     const drop = await runDrop();
     return c.json({ dropId: drop.id }, 202);
+  })
+
+  .post("/api/drop/reset", async (c) => {
+    if (simulationRunning()) return c.json({ error: "simulation_running" }, 409);
+    await resetDrop();
+    return c.json({ ok: true });
+  })
+
+  // Ava's conversation, with the latest status of any order she created.
+  .get("/api/drop/transcript", async (c) => {
+    const transcript = avaTranscript();
+    const orderIds = transcript.flatMap((t) => (t.orderId ? [t.orderId] : []));
+    const orders = orderIds.length
+      ? await db.select({ id: schema.orders.id, status: schema.orders.status, amountCents: schema.orders.amountCents }).from(schema.orders).where(inArray(schema.orders.id, orderIds))
+      : [];
+    return c.json({ transcript, orders, running: simulationRunning() });
   })
 
   .post("/api/agents/:keyId/block", async (c) => {
@@ -146,8 +245,6 @@ export const merchantRoutes = new Hono()
       throw err;
     }
   })
-
-  .get("/api/drop/transcript", (c) => c.json({ transcript: avaTranscript() }))
 
   .get("/api/rules", async (c) => {
     const rules = await getRules();
@@ -178,3 +275,4 @@ export const merchantRoutes = new Hono()
     const rules = await getRules();
     return c.json({ ...rules, cards: describePolicy(rules.policy) });
   });
+

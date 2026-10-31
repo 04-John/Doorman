@@ -4,6 +4,7 @@ import { z } from "zod";
 import { ApprovalError, approvalView, authorizeApproval, declineApproval } from "../doorman/approvals.js";
 import { approveLinkRequest, linkRequestView, passesFor, revokePass } from "../doorman/passes.js";
 import { currentCustomer } from "../doorman/sessions.js";
+import { currentDrop, getRules, searchProducts } from "../doorman/store.js";
 import { env } from "../env.js";
 
 const linkApproval = z.object({
@@ -13,6 +14,16 @@ const linkApproval = z.object({
 
 export const customerRoutes = new Hono()
   .get("/api/config", (c) => c.json({ paypalClientId: env.PAYPAL_CLIENT_ID }))
+
+  // Public storefront data: products, the drop's state, and the per-customer limit.
+  .get("/api/store", async (c) => {
+    const [products, drop, { policy }] = await Promise.all([searchProducts(), currentDrop(), getRules()]);
+    return c.json({
+      products: products.map((p) => ({ id: p.id, name: p.name, priceCents: p.priceCents, stock: p.stock, limitedDrop: p.limitedDrop })),
+      drop: drop && !drop.cleared ? { status: drop.status, startedAt: drop.startedAt, stockTotal: drop.stockTotal } : null,
+      perCustomerLimit: policy.dropLimitPerCustomer,
+    });
+  })
 
   .get("/api/me", async (c) => {
     const customer = await currentCustomer(c);

@@ -20,6 +20,8 @@ export const drops = pgTable("drops", {
   stockTotal: integer("stock_total").notNull(),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
+  // Set by "Reset": the dashboard goes back to READY instead of showing this drop.
+  cleared: boolean("cleared").notNull().default(false),
 });
 
 export const agents = pgTable("agents", {

@@ -1,0 +1,30 @@
+# Render Blueprint: one web service runs the API, the agent-facing MCP endpoint and the web app.
+# Secrets are entered in the Render dashboard (sync: false), never committed.
+services:
+  - type: web
+    name: doorman
+    runtime: node
+    plan: free
+    region: virginia # next to the Neon database (AWS us-east-1)
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DEMO_BUYER_PAYER_ID
+        sync: false
+      # e.g. https://doorman.onrender.com
+      - key: PUBLIC_URL
+        sync: false
+      # e.g. https://doorman.onrender.com/auth/paypal/callback (also add it in the PayPal app's Log in with PayPal settings)
+      - key: PAYPAL_LOGIN_RETURN_URL
+        sync: false

@@ -11,6 +11,8 @@ export interface TranscriptEntry {
   text: string;
   tool?: string;
   ok?: boolean;
+  // Set on a successful checkout, so the dashboard can show when John pays.
+  orderId?: string;
 }
 
 const SYSTEM = `You are Ava, a shopping assistant made by Demo Assistant Co. You shop for your user, John Doe, using a store's tools.
@@ -36,7 +38,8 @@ export async function runAva(ava: StoreAgent, transcript: TranscriptEntry[]): Pr
       execute: async (args: z.infer<S>) => {
         storeCalls++;
         const { ok, data } = await ava.call(name, args as Record<string, unknown>);
-        say({ from: "store", tool: name, ok, text: JSON.stringify({ request: args, response: data }) });
+        const orderId = typeof data.orderId === "string" ? data.orderId : undefined;
+        say({ from: "store", tool: name, ok, text: JSON.stringify({ request: args, response: data }), ...(orderId ? { orderId } : {}) });
         return data;
       },
     });
