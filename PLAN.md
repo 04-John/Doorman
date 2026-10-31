@@ -64,7 +64,7 @@
 **Claude**
 - [x] PayPal access: fetch and cache a sandbox token, and attach a unique request ID to every payment call so a retry can't charge twice.
 - [ ] Payments: create an order that **authorizes** without charging, have the buyer approve on a test page (PayPal JS SDK v6), then **capture** or **void** it. *Built. Order creation is verified in the sandbox; waiting on your browser test.*
-- [ ] Log in with PayPal: sign a sandbox buyer in and read `verified_account`, email and user ID. *Built. The redirect reaches PayPal; waiting on your browser test.*
+- [x] Log in with PayPal: sign a sandbox buyer in and read `verified_account`, email and user ID. Confirmed Oct 31: returns name, email, verified=true and payer ID. Needs `response_type=code`, which PayPal's docs example omits.
 - [ ] Match the payer ID from Log in with PayPal (the "PayPal account ID" attribute) against the payer ID on the approved order. *Built; waiting on your browser test.*
 - [x] Agent signatures: an agent signs each request with an Ed25519 key (RFC 9421 HTTP Message Signatures), and Doorman verifies the signature. 6 tests pass. `npm run demo:agent` shows unsigned, signed and tampered requests handled correctly.
 - [x] Agent-facing server: a bare MCP server with one tool, `search_products`.
