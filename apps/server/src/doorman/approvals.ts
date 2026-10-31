@@ -9,7 +9,7 @@ import type { EventAction } from "../db/schema.js";
 import { demoAgentByKeyId } from "../sim/demo-agents.js";
 import { recordEvent } from "./events.js";
 import type { CustomerRow } from "./sessions.js";
-import { endDrop, getProduct, getRules, reserveStock, unitsInDrop } from "./store.js";
+import { APPROVAL_EXPIRED, APPROVAL_MINUTES, endDrop, getProduct, getRules, reserveStock, unitsInDrop } from "./store.js";
 
 export class ApprovalError extends Error {
   constructor(
@@ -20,10 +20,6 @@ export class ApprovalError extends Error {
     super(message);
   }
 }
-
-// Approval links expire, as the customer is told on the page.
-const APPROVAL_MINUTES = 15;
-export const APPROVAL_EXPIRED = "Approval link expired";
 
 async function loadOrder(token: string): Promise<OrderRow> {
   const [order] = await db.select().from(schema.orders).where(eq(schema.orders.approvalToken, token));

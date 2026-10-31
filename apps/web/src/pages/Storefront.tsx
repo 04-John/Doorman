@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { api, type Pass, type StoreInfo } from "../lib/api";
 import { money } from "../lib/format";
+import { preloadPayPal } from "../lib/paypal";
 import { Skeleton } from "../ui/bits";
 import { AgentAvatar } from "../ui/status";
 import { useToast } from "../ui/toast";
@@ -57,6 +58,9 @@ export default function Storefront() {
   const linked = useLinkedAgent();
   const [asking, setAsking] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
+
+  // Warm PayPal up now: the cart and Ava's approval page (same tab) both need it.
+  useEffect(preloadPayPal, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,8 +121,10 @@ export default function Storefront() {
     setAsking(true);
     setRefusal(null);
     try {
-      const { approvalPath } = await api.agentCheckout(product.id, size);
-      navigate(approvalPath);
+      const result = await api.agentCheckout(product.id, size);
+      if (result.ok) return navigate(result.approvalPath);
+      setRefusal(result.message);
+      setAsking(false);
     } catch (err) {
       setRefusal(err instanceof Error ? err.message : "Your assistant couldn't check out.");
       setAsking(false);

@@ -20,8 +20,9 @@ const cart = z.object({
 
 const errand = z.object({ productId: z.string().min(1), size });
 
+// Doorman saying no is a normal answer, so it comes back as 200 with ok: false.
 const errandReply = (result: Errand) =>
-  result.ok ? { approvalPath: result.approvalPath, decision: result.decision } : { error: "refused", decision: result.decision, message: result.reason };
+  result.ok ? { ok: true, approvalPath: result.approvalPath, decision: result.decision } : { ok: false, decision: result.decision, message: result.reason };
 
 export const shopRoutes = new Hono()
   .post("/api/store/checkout", async (c) => {
@@ -52,14 +53,12 @@ export const shopRoutes = new Hono()
       .orderBy(desc(schema.passes.createdAt))
       .limit(1);
     if (!pass) return c.json({ error: "no_pass", message: "Link your AI assistant first." }, 409);
-    const result = await agentBuys({ keyId: pass.agentKeyId, passId: pass.id, productId: body.data.productId, size: body.data.size, quantity: 1 });
-    return c.json(errandReply(result), result.ok ? 200 : 409);
+    return c.json(errandReply(await agentBuys({ keyId: pass.agentKeyId, passId: pass.id, productId: body.data.productId, size: body.data.size, quantity: 1 })));
   })
 
   // "Try again" after a released hold: the same agent asks for the same thing.
   .post("/api/approvals/:token/retry", async (c) => {
-    const result = await agentBuys(await retryInput(c.req.param("token")));
-    return c.json(errandReply(result), result.ok ? 200 : 409);
+    return c.json(errandReply(await agentBuys(await retryInput(c.req.param("token")))));
   })
 
   .onError((err, c) => {

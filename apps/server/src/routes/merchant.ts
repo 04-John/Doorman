@@ -12,7 +12,7 @@ import { approvalUrl } from "../doorman/checkout.js";
 import type { Check } from "../doorman/engine.js";
 import { eventBus, type EventRow } from "../doorman/events.js";
 import { policySchema } from "../doorman/policy.js";
-import { currentDrop, getProduct, getRules, resetDrop, saveRules, type DropRow } from "../doorman/store.js";
+import { currentDrop, expireStaleApprovals, getProduct, getRules, resetDrop, saveRules, type DropRow } from "../doorman/store.js";
 import { paypal } from "../paypal/client.js";
 import { avaTranscript, runDrop, simulationRunning } from "../sim/run.js";
 
@@ -25,6 +25,7 @@ async function shownDrop(): Promise<DropRow | undefined> {
 async function summary() {
   const drop = await shownDrop();
   if (!drop) return { drop: null, kpis: null, simulationRunning: simulationRunning() };
+  await expireStaleApprovals();
   // Independent queries, run together to keep the dashboard snappy.
   const [product, byDecision, [visitors], [bots], money] = await Promise.all([
     getProduct(drop.productId),

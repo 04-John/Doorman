@@ -157,10 +157,7 @@ export interface AgentInfo {
 }
 
 // What an agent's errand came back with: an approval page, or Doorman's refusal.
-export interface Errand {
-  approvalPath: string;
-  decision: Decision;
-}
+export type Errand = { ok: true; approvalPath: string; decision: Decision } | { ok: false; decision: Decision | null; message: string };
 
 export interface CartLine {
   productId: string;

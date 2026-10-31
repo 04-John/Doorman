@@ -21,7 +21,7 @@ Checkout gives you an approvalUrl: John must open it and approve the payment in 
 Finish with a short, friendly message to John that includes the approvalUrl exactly as given.`;
 
 export const AVA_TASK =
-  "Static Supply is dropping the Night Shift Hoodie today. Get me two, one for me and one for my brother, as long as each is under $100. Send me the link to approve.";
+  "Static Supply is dropping the Night Shift Hoodie today. Get me two in size M, one for me and one for my brother, as long as each is under $100. Send me the link to approve.";
 
 // "failed_early" means the AI never reached the store, so a scripted Ava can stand in.
 export type AvaOutcome = "done" | "failed_early" | "failed_midway";
@@ -55,7 +55,7 @@ export async function runAva(ava: StoreAgent, transcript: TranscriptEntry[]): Pr
         add_to_cart: storeTool(
           "add_to_cart",
           "Put a product in a new cart; returns a cartId",
-          z.object({ productId: z.string(), quantity: z.number().int().min(1).max(5) }),
+          z.object({ productId: z.string(), quantity: z.number().int().min(1).max(5), size: z.enum(["S", "M", "L", "XL"]).optional() }),
         ),
         checkout: storeTool("checkout", "Check out a cart; returns an approvalUrl for John", z.object({ cartId: z.string() })),
       },

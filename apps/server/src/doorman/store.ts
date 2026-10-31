@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, inArray, ne, sql, sum } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lt, ne, sql, sum } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import type { OrderStatus } from "../db/schema.js";
 import { policySchema, type Policy } from "./policy.js";
@@ -65,6 +65,18 @@ export async function returnStock(productId: string, quantity: number) {
     .where(eq(schema.products.id, productId));
 }
 
+// Approval links expire, as the customer is told on the approval page. An expired
+// order no longer holds the customer's place in the drop.
+export const APPROVAL_MINUTES = 15;
+export const APPROVAL_EXPIRED = "Approval link expired";
+
+export async function expireStaleApprovals() {
+  await db
+    .update(schema.orders)
+    .set({ status: "declined", releaseReason: APPROVAL_EXPIRED, updatedAt: new Date() })
+    .where(and(eq(schema.orders.status, "awaiting_approval"), lt(schema.orders.createdAt, new Date(Date.now() - APPROVAL_MINUTES * 60_000))));
+}
+
 // Units of a drop product a customer already has in play during this drop.
 export async function unitsInDrop(input: {
   dropId: string;
@@ -73,6 +85,7 @@ export async function unitsInDrop(input: {
   statuses: OrderStatus[];
   excludeOrderId?: string;
 }): Promise<number> {
+  if (input.statuses.includes("awaiting_approval")) await expireStaleApprovals();
   const payerColumn = "expected" in input.payer ? schema.orders.expectedPayerId : schema.orders.approvedPayerId;
   const payerId = "expected" in input.payer ? input.payer.expected : input.payer.approved;
   const [row] = await db

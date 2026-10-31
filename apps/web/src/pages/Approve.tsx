@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { api, ApiError, loginHref, type Approval, type Customer } from "../lib/api";
 import { expiresIn, money } from "../lib/format";
+import { preloadPayPal } from "../lib/paypal";
 import { Skeleton } from "../ui/bits";
 import { BigButton, KeyValues, MobileShell, PayPalLoginButton, TickLine } from "../ui/mobile";
 import { PayPalButton } from "../ui/PayPalButton";
@@ -197,6 +198,9 @@ export default function Approve() {
   const [holding, setHolding] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
+  // Start PayPal while the purchase loads; the sandbox is slow to get ready.
+  useEffect(preloadPayPal, []);
+
   useEffect(() => {
     setApproval(null);
     setError(null);
@@ -227,8 +231,9 @@ export default function Approve() {
     setRetrying(true);
     setMessage(null);
     try {
-      const { approvalPath } = await api.retryApproval(token);
-      navigate(approvalPath);
+      const result = await api.retryApproval(token);
+      if (result.ok) navigate(result.approvalPath);
+      else setMessage(`Doorman stopped ${approval?.agent?.name ?? "the agent"}: ${result.message}`);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Couldn't ask the agent to try again.");
     } finally {

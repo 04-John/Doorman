@@ -41,6 +41,11 @@
       - Link flow now matches the design: Choose your agent (Ava, Juniper, Milo, or paste a key), then limits, then pass created. My passes moved to `/passes`.
       - Approve: shows the size, has "Try again" after a released hold, and approval links expire after 15 minutes as the page says.
       - Logins are kept in the database, so a server restart (or Render waking up) no longer logs people out.
+    - **Your review, round 2:**
+      - PayPal button: full width and pill-shaped as designed.
+      - It shows sooner: the 18s eligibility check is gone, and PayPal starts loading as soon as the store or approval page opens. From the store ("Ask Ava to buy it") it's ready in about 2s. A freshly opened approval link still waits about 15s for PayPal's sandbox to start (shown as "Loading PayPal…").
+      - Approvals older than 15 minutes now expire everywhere, so old drop runs no longer trigger "Another one for the same customer" or inflate "Awaiting approval".
+      - Doorman's refusals no longer show as red 409 errors in the console; Log in with PayPal looks like PayPal's button and says "Opening PayPal…" while the sandbox loads.
 - **Next step:**
   - You: log in with PayPal once more (old logins were in memory), then test the store → link → buy → approve path, and the cart checkout with a sandbox buyer.
   - You: create a Render account (sign in with GitHub).

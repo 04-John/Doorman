@@ -1,6 +1,7 @@
 // Shell for customer pages: mobile-first, content column capped at 440px on desktop.
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
+import { Spinner } from "./bits";
 import { LogoMark } from "./chrome";
 import { ICON, Icon } from "./status";
 
@@ -92,25 +93,44 @@ export function BigButton({ children, onClick, href, variant = "primary", disabl
 }
 
 // "Log in with PayPal" — sends the customer through PayPal and back to this page.
+// Styled like PayPal's own login button. The sandbox login page can take a while
+// to open, so the button says so as soon as it's pressed.
 export function PayPalLoginButton({ href }: { href: string }) {
+  const [opening, setOpening] = useState(false);
+  // Coming back with the browser's Back button restores the page as it was left.
+  useEffect(() => {
+    const reset = (e: PageTransitionEvent) => e.persisted && setOpening(false);
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
   return (
     <a
       href={href}
+      onClick={() => setOpening(true)}
+      aria-busy={opening}
       style={{
-        height: 50,
-        borderRadius: 25,
-        background: "#FFFFFF",
-        border: "1.5px solid #15171C",
+        height: 48,
+        borderRadius: 24,
+        background: opening ? "#005EA6" : "#0070BA",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: 8,
+        gap: 7,
         fontSize: 16,
-        fontWeight: 600,
-        color: "#15171C",
+        fontWeight: 500,
+        color: "#FFFFFF",
       }}
     >
-      Log in with <span style={{ fontWeight: 800, fontStyle: "italic", color: "#003087" }}>PayPal</span>
+      {opening ? (
+        <>
+          <Spinner size={15} light />
+          Opening PayPal…
+        </>
+      ) : (
+        <>
+          Log in with <span style={{ fontWeight: 800, fontStyle: "italic", letterSpacing: "-0.01em" }}>PayPal</span>
+        </>
+      )}
     </a>
   );
 }

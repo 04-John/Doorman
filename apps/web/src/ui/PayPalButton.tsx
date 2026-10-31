@@ -2,7 +2,11 @@
 // order ID, so a cart only creates its order when the shopper decides to pay.
 import { useEffect, useRef, useState } from "react";
 import { loadPayPal } from "../lib/paypal";
-import { Skeleton } from "./bits";
+import { Spinner } from "./bits";
+
+// Full width and pill-shaped, as in the design. Width and corner radius are the
+// two things PayPal's button lets a page style.
+const buttonStyle = { width: "100%", height: 48, "--paypal-button-border-radius": "24px" } as React.CSSProperties;
 
 export function PayPalButton({
   order,
@@ -23,10 +27,8 @@ export function PayPalButton({
     let cancelled = false;
     let detach = () => {};
     loadPayPal()
-      .then(async (sdk) => {
-        const methods = await sdk.findEligibleMethods({ currencyCode: "USD" });
+      .then((sdk) => {
         if (cancelled) return;
-        if (!methods.isEligible("paypal")) return handlers.current.onMessage("PayPal isn't available in this browser.");
         const session = sdk.createPayPalOneTimePaymentSession({
           onApprove: async ({ orderId }) => handlers.current.onApproved(orderId),
           onCancel: () => handlers.current.onMessage("You closed PayPal. Nothing was charged."),
@@ -54,9 +56,17 @@ export function PayPalButton({
   }, []);
 
   return (
-    <div style={{ width: "100%", minHeight: 50, display: "grid" }}>
-      {!ready && <Skeleton width="100%" height={50} radius={25} />}
-      <paypal-button ref={button} type="pay" hidden={!ready} />
+    <div style={{ width: "100%", minHeight: 48, display: "grid" }}>
+      {!ready && (
+        <div
+          aria-live="polite"
+          style={{ height: 48, borderRadius: 24, background: "#FDF5E2", border: "1px solid #F2DDA4", display: "flex", alignItems: "center", justifyContent: "center", gap: 9, fontSize: 14, fontWeight: 500, color: "#6B4600" }}
+        >
+          <Spinner size={14} />
+          Loading PayPal…
+        </div>
+      )}
+      <paypal-button ref={button} type="pay" hidden={!ready} style={buttonStyle} />
     </div>
   );
 }

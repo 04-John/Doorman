@@ -96,7 +96,7 @@ async function script() {
   await sleep(1500);
   log("Kestrel (signed, no customer linked) tries to buy");
   await kestrel.call("search_products", { query: "hoodie" });
-  const kCart = await kestrel.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1 });
+  const kCart = await kestrel.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1, size: "L" });
   if (kCart.ok) {
     const order = await kestrel.call("checkout", { cartId: kCart.data.cartId });
     if (order.ok) log(`Kestrel's approval link (needs a step up): ${order.data.approvalUrl}`);
@@ -117,7 +117,7 @@ async function script() {
   // A scripted Ava stands in only if the AI never reached the store.
   if ((await avaRun) === "failed_early") {
     log("Ava checks out (scripted)");
-    const cart = await ava.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1 });
+    const cart = await ava.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1, size: "M" });
     if (cart.ok) {
       const order = await ava.call("checkout", { cartId: cart.data.cartId });
       if (order.ok) log(`Ava's approval link for her customer: ${order.data.approvalUrl}`);
