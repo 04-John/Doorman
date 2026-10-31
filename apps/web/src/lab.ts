@@ -40,7 +40,7 @@ async function showLogin() {
   const params = new URLSearchParams(location.search);
   if (params.get("login") === "failed") log(`Login failed: ${params.get("reason")}`);
 
-  const { profile } = await api<{ profile: null | { name: string; email: string; payerId: string; verifiedAccount: boolean } }>("/api/lab/me");
+  const { customer: profile } = await api<{ customer: null | { name: string; email: string; payerId: string; verified: boolean } }>("/api/me");
   const el = $("login-status");
   if (!profile) {
     el.textContent = "Not logged in.";
@@ -50,8 +50,8 @@ async function showLogin() {
   el.append(
     `Logged in as ${profile.name ?? "unknown"} (${profile.email ?? "no email shared"}). `,
     Object.assign(document.createElement("span"), {
-      className: profile.verifiedAccount ? "ok" : "bad",
-      textContent: profile.verifiedAccount ? "Verified PayPal account." : "Not a verified account.",
+      className: profile.verified ? "ok" : "bad",
+      textContent: profile.verified ? "Verified PayPal account." : "Not a verified account.",
     }),
     ` Payer ID: ${profile.payerId ?? "not shared"}`,
   );
@@ -71,7 +71,7 @@ function loadSdk(): Promise<void> {
 
 async function setUpCheckout() {
   const status = $("checkout-status");
-  const { clientId } = await api<{ clientId: string }>("/api/lab/config");
+  const { paypalClientId: clientId } = await api<{ paypalClientId: string }>("/api/config");
   await loadSdk();
   const sdk = await window.paypal!.createInstance({ clientId, components: ["paypal-payments"], pageType: "checkout" });
   const methods = await sdk.findEligibleMethods({ currencyCode: "USD" });

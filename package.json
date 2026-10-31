@@ -16,6 +16,7 @@
     "dev:server": "npm run dev -w @doorman/server",
     "check:paypal": "npm run check:paypal -w @doorman/server",
     "demo:agent": "npm run demo:agent -w @doorman/server",
+    "db:setup": "npm run db:push -w @doorman/server && npm run db:seed -w @doorman/server",
     "test": "npm run test -w @doorman/server",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

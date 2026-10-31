@@ -1,0 +1,91 @@
+import { and, desc, eq, gte, ilike, inArray, ne, sql, sum } from "drizzle-orm";
+import { db, schema } from "../db/client.js";
+import type { OrderStatus } from "../db/schema.js";
+import { policySchema, type Policy } from "./policy.js";
+
+export type ProductRow = typeof schema.products.$inferSelect;
+export type DropRow = typeof schema.drops.$inferSelect;
+
+export const DROP_PRODUCT_ID = "hoodie-night-shift";
+export const DROP_STOCK = 50;
+
+export async function getProduct(id: string): Promise<ProductRow | undefined> {
+  const [product] = await db.select().from(schema.products).where(eq(schema.products.id, id));
+  return product;
+}
+
+export async function searchProducts(query?: string): Promise<ProductRow[]> {
+  const words = query?.split(/\s+/).filter(Boolean) ?? [];
+  const conditions = words.map((w) => ilike(schema.products.name, `%${w}%`));
+  return db.select().from(schema.products).where(and(...conditions)).orderBy(desc(schema.products.limitedDrop));
+}
+
+export async function currentDrop(): Promise<DropRow | undefined> {
+  const [drop] = await db.select().from(schema.drops).orderBy(desc(schema.drops.startedAt)).limit(1);
+  return drop;
+}
+
+// "Run the drop": close any open drop, restock the hoodie, open a new drop.
+export async function startDrop(): Promise<DropRow> {
+  await db.update(schema.drops).set({ status: "ended", endedAt: new Date() }).where(eq(schema.drops.status, "live"));
+  await db.update(schema.products).set({ stock: DROP_STOCK }).where(eq(schema.products.id, DROP_PRODUCT_ID));
+  const [drop] = await db
+    .insert(schema.drops)
+    .values({ productId: DROP_PRODUCT_ID, status: "live", stockTotal: DROP_STOCK })
+    .returning();
+  return drop!;
+}
+
+export async function endDrop(dropId: string) {
+  await db.update(schema.drops).set({ status: "ended", endedAt: new Date() }).where(eq(schema.drops.id, dropId));
+}
+
+// Takes stock atomically, so two approvals can't both get the last hoodie.
+export async function reserveStock(productId: string, quantity: number): Promise<number | null> {
+  const [row] = await db
+    .update(schema.products)
+    .set({ stock: sql`${schema.products.stock} - ${quantity}` })
+    .where(and(eq(schema.products.id, productId), gte(schema.products.stock, quantity)))
+    .returning({ stock: schema.products.stock });
+  return row ? row.stock : null;
+}
+
+// Units of a drop product a customer already has in play during this drop.
+export async function unitsInDrop(input: {
+  dropId: string;
+  productId: string;
+  payer: { expected: string } | { approved: string };
+  statuses: OrderStatus[];
+  excludeOrderId?: string;
+}): Promise<number> {
+  const payerColumn = "expected" in input.payer ? schema.orders.expectedPayerId : schema.orders.approvedPayerId;
+  const payerId = "expected" in input.payer ? input.payer.expected : input.payer.approved;
+  const [row] = await db
+    .select({ units: sum(schema.orders.quantity) })
+    .from(schema.orders)
+    .where(
+      and(
+        eq(schema.orders.dropId, input.dropId),
+        eq(schema.orders.productId, input.productId),
+        eq(payerColumn, payerId),
+        inArray(schema.orders.status, input.statuses),
+        input.excludeOrderId ? ne(schema.orders.id, input.excludeOrderId) : undefined,
+      ),
+    );
+  return Number(row?.units ?? 0);
+}
+
+let policyCache: { policy: Policy; rulesText: string } | undefined;
+
+export async function getRules(): Promise<{ policy: Policy; rulesText: string }> {
+  if (policyCache) return policyCache;
+  const [row] = await db.select().from(schema.settings).where(eq(schema.settings.id, 1));
+  if (!row) throw new Error("No rules found. Run `npm run db:seed` first.");
+  policyCache = { policy: policySchema.parse(row.policy), rulesText: row.rulesText };
+  return policyCache;
+}
+
+export async function saveRules(policy: Policy, rulesText: string) {
+  await db.update(schema.settings).set({ policy, rulesText }).where(eq(schema.settings.id, 1));
+  policyCache = { policy, rulesText };
+}

@@ -8,9 +8,14 @@ const schema = z.object({
     .string()
     .min(1, "is empty. Copy the Secret from the same Doorman app page."),
   PAYPAL_ENV: z.enum(["sandbox"]).default("sandbox"),
-  PAYPAL_LOGIN_RETURN_URL: z.string().url(),
+  PAYPAL_LOGIN_RETURN_URL: z.url(),
+  DATABASE_URL: z.string().min(1, "is empty. Paste the Neon connection string (starts with postgresql://)."),
   GEMINI_API_KEY: z.string().optional(),
-  DATABASE_URL: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-3.5-flash"),
+  // Where customers open approval and link pages. Locally that's the Vite app.
+  PUBLIC_URL: z.url().default("http://127.0.0.1:5173"),
+  // Sandbox buyer the demo agent "Ava" shops for (its payer ID from Log in with PayPal).
+  DEMO_BUYER_PAYER_ID: z.string().optional(),
   PORT: z.coerce.number().int().positive().default(8787),
 });
 

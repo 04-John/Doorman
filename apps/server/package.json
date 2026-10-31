@@ -6,18 +6,25 @@
     "dev": "tsx watch --env-file=../../.env src/index.ts",
     "check:paypal": "tsx --env-file=../../.env src/scripts/check-paypal.ts",
     "demo:agent": "tsx src/scripts/agent-demo.ts",
-    "test": "tsx --test src/agents/signatures.test.ts",
+    "db:push": "drizzle-kit push",
+    "db:seed": "tsx --env-file=../../.env src/db/seed.ts",
+    "test": "tsx --test src/agents/signatures.test.ts src/doorman/engine.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.109",
     "@hono/mcp": "^0.3.5",
     "@hono/node-server": "^2.1.5",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "ai": "^7.0.159",
+    "drizzle-orm": "^0.45.4",
     "hono": "^4.13.14",
+    "postgres": "~3.4.9",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "drizzle-kit": "^0.31.11",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }

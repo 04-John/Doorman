@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monitor · Doorman</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 24px; }
+      #kpis span { display: inline-block; margin-right: 18px; }
+      table { border-collapse: collapse; width: 100%; font-size: 13px; }
+      td, th { border-bottom: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+      tr { cursor: pointer; } tr:hover { background: #f6f6f6; }
+      .allowed { color: #0a7d2c; } .step_up { color: #b26b00; } .throttled { color: #6941c6; } .blocked { color: #b42318; }
+      #detail { position: fixed; right: 0; top: 0; bottom: 0; width: 460px; background: #fff; border-left: 1px solid #ccc; padding: 16px; overflow: auto; display: none; }
+      pre { white-space: pre-wrap; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <p>Test page · the real dashboard comes from the designs</p>
+    <h1>Doorman monitor <button id="run">Run the drop</button></h1>
+    <p id="drop"></p>
+    <p id="kpis"></p>
+    <table>
+      <thead><tr><th>Time</th><th>Agent</th><th>Operator</th><th>Identity</th><th>Customer</th><th>Action</th><th>Decision</th><th>Reason</th><th>Amount</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="detail"></div>
+    <script type="module" src="/src/monitor.ts"></script>
+  </body>
+</html>

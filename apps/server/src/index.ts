@@ -3,14 +3,20 @@ import { Hono } from "hono";
 import { env } from "./env.js";
 import { PayPalError } from "./paypal/client.js";
 import { agentRoutes } from "./routes/agents.js";
+import { authRoutes } from "./routes/auth.js";
+import { customerRoutes } from "./routes/customer.js";
 import { labRoutes } from "./routes/lab.js";
 import { mcpRoutes } from "./routes/mcp.js";
+import { merchantRoutes } from "./routes/merchant.js";
 
 const app = new Hono();
 
 app.get("/health", (c) => c.json({ ok: true, paypal: env.PAYPAL_ENV }));
+app.route("/", authRoutes);
 app.route("/", agentRoutes);
 app.route("/", mcpRoutes);
+app.route("/", customerRoutes);
+app.route("/", merchantRoutes);
 app.route("/", labRoutes);
 
 app.onError((err, c) => {

@@ -99,7 +99,9 @@ Design them in this priority order: the first four matter most.
   - Stock counter **41 / 50 left** (a progress bar works well)
   - Time since the drop started
   - A **"Run the drop" button**: starts the simulation for judges. It's the most important button on the page; make it obvious.
-- **KPI tiles** (sample numbers): Agents seen **43** · Allowed **7** · Step up **4** · Throttled **9** · Blocked **23** · Held **$476** · Charged **$408**
+- **KPI tiles** (sample numbers): Agents seen **14** · Allowed **44** · Step up **2** · Throttled **20** · Blocked **30** · Awaiting approval **$136** · Held **$0** · Charged **$68**
+  - These are close to what a real simulated drop produces.
+  - Agent purchases wait for the customer to approve in PayPal, so "Awaiting approval" matters. It's the money agents have asked for that customers haven't approved yet.
 - **Live traffic table** (the main element; built with AG Grid, see section 7):
   - **Columns:** Time · Agent (name, or "Unknown") · Operator · Identity badge · Customer (masked, e.g. "John D.") · Action (Browsed / Added to cart / Checkout / Paid) · Decision badge · Reason (short) · Amount
   - **Behaviour:**
@@ -180,9 +182,11 @@ Design them in this priority order: the first four matter most.
 
 **Purpose:** a customer gives their AI assistant permission to shop at this store, with limits.
 
+**How it starts:** the customer's agent asks to be linked and sends them a link (like "Connect your account" in other apps). The customer opens it, so the agent is already known when the page loads.
+
 **Link flow, 3 steps on one page or a short stepper**
 1. **Log in with PayPal**: use PayPal's official button style, leave a placeholder. After login show "Logged in as John Doe · Verified PayPal account ✓".
-2. **Choose your agent:** a list of known assistants (Ava by Demo Assistant Co., plus 1–2 made-up others), or "Paste your agent's key" for advanced users.
+2. **Confirm your agent:** a card saying "**Ava** (Demo Assistant Co.) is asking to shop for you at Static Supply", with the agent's name, operator and an icon. This is a confirmation, not a picker.
 3. **Set limits:**
    - Spending cap per purchase: $50 / $150 / $300 / custom
    - Expires: 24 hours / 7 days / 30 days
@@ -195,7 +199,7 @@ Design them in this priority order: the first four matter most.
 - A **Revoke** button on each pass, with a confirmation: "Ava will no longer be able to buy for you at Static Supply."
 - A revoked pass shows greyed out with a "Revoked" label.
 
-**States to design:** not logged in · logged in · pass created · passes list · revoked pass · login failed ("PayPal login didn't complete. Try again.")
+**States to design:** not logged in · logged in · pass created · passes list · revoked pass · link expired ("This link has expired. Ask your agent for a new one.") · login failed ("PayPal login didn't complete. Try again.")
 
 ### Screen 5: Merchant onboarding + Rules
 
@@ -240,7 +244,7 @@ Design them in this priority order: the first four matter most.
 ## 5. Flows (for linking frames in a Figma prototype)
 
 - **A. Judge:** Demo hub → Dashboard (empty) → Run the drop → Dashboard (live) → click a row → Decision detail
-- **B. Customer links agent:** Storefront → Link your agent → (PayPal login, an external page) → Set limits → Pass created → My passes
+- **B. Customer links agent:** (agent sends a link) → Link your agent → (PayPal login, an external page) → Confirm agent + set limits → Pass created → My passes. Customers can also reach "My passes" from the Storefront.
 - **C. Agent buys:** (agent checks out) → Approve purchase → (PayPal popup, external) → Held → Charged
 - **D. Unknown agent:** Approve purchase (step up) → Log in with PayPal → Approve → Held → Charged
 - **E. Merchant setup:** Onboarding 1 → 2 → 3 → Dashboard
@@ -315,8 +319,10 @@ We don't design PayPal's own screens (login, payment popup). Show them as a simp
 
 ## 8. Hand-off
 
-- **Frame names:** number them like the screens, e.g. `1 Dashboard / Live`, `2 Detail / Blocked`, `3 Approve / Step up`. Claude reads the file directly and builds from those names.
-- **Share:** the Figma link with "Anyone with the link can view".
+- **Frame names:** number them like the screens, e.g. `1 Dashboard / Live`, `2 Detail / Blocked`, `3 Approve / Step up`.
+- **Getting the designs to Claude:** Claude can't open claude.ai/design links directly, since they need your login.
+  - **Preferred:** use Claude Design's export or download option (HTML or a ZIP) and save the files into `C:\Users\USER\doorman\design\`. Claude reads them from there and matches them closely.
+  - **Fallback:** a full-size screenshot of every screen and state, saved in the same folder.
 - **Deadlines:**
   - **Sun Nov 1:** Screen 1 (Dashboard) and its components, so the build can start.
   - **Tue Nov 3:** everything else.

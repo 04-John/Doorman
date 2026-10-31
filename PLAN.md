@@ -18,7 +18,7 @@
 ---
 
 ## Status
-- **Phase:** 2 (core engine). Phase 1 passed its checkpoint on Oct 31, a day early. The schedule was re-planned on Oct 30.
+- **Phase:** 2 (core engine), mostly built on Oct 31, ahead of the Nov 2–4 slot. Phase 1 passed its checkpoint on Oct 31.
 - **Done:**
   - **Oct 27:** GitHub repo `04-John/Doorman` created (private), PayPal developer login, 1 US personal sandbox account.
   - **Oct 30:** project skeleton built (server, PayPal client, key-check script, README, MIT license), first commit pushed to GitHub.
@@ -26,10 +26,12 @@
     - Doorman app created under the US business account, with Log in with PayPal on (return URL on 127.0.0.1). Keys verified.
     - Phase 1 built: payments (authorize, capture, void), Log in with PayPal, payer-ID match, agent signatures, the first MCP store tool, and the test bench.
     - **Browser tests passed:** login, capture, void and the payer mismatch. Phase 1 is done.
+    - **Neon and Gemini keys added.** Gemini (gemini-3.5-flash) works on the free tier.
+    - **Phase 2 core built and tested:** database, risk rules, passes, MCP store tools, checkout to approval to charge or release, and the drop simulation.
 - **Next step:**
-  - You: create the free Neon database and add `DATABASE_URL` to `.env`, add the Gemini key if it isn't there yet, and send the rough screen sketches.
-  - Claude: start the Phase 2 risk rules and agent pass.
-- **Blocked on:** nothing. The database is needed by Nov 2.
+  - You: log in once on `/lab.html` as buyer 1 (so Ava has a customer), then try the full flow on `/monitor.html`. Keep designing.
+  - Claude: AI explanations, the AI rule writer, and the Gemini-driven Ava.
+- **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
 
 ---
@@ -88,26 +90,26 @@
 ## Phase 2: Core engine (Mon Nov 2 – Wed Nov 4)
 
 **Claude**
-- [ ] Database on Neon (free Postgres): merchants, products, drops, agents, passes, carts, orders, decisions, events.
-  - Needs: you create a free Neon project and put its URL in `.env`.
-- [ ] **Agent pass:** after PayPal login the customer sets a cap and expiry, and Doorman issues a signed pass tied to the agent's key. Revoking it works instantly.
-- [ ] **Store tools for agents (MCP):** `search_products`, `get_product`, `create_cart`, `checkout`, `order_status`.
-- [ ] **Risk rules**, fixed and predictable:
+- [x] Database on Neon (free Postgres): products, drops, agents, customers, passes, link requests, orders, events, settings. Set up with `npm run db:setup`.
+- [x] **Agent pass:** the agent asks to be linked, the customer logs in with PayPal and sets a cap and expiry, and the agent collects a pass token once. The pass only works for that agent's key. Revoking works instantly.
+- [x] **Store tools for agents (MCP):** `search_products`, `add_to_cart`, `checkout` (returns the customer's approval link), `order_status`, `request_customer_link`, `collect_agent_pass`.
+- [x] **Risk rules**, fixed and predictable (15 tests pass):
   - Identity level: verified pass / signed with no pass / unsigned.
-  - Request speed, cart size against the drop's limits, and one item per customer during a drop.
-  - Several passes on one PayPal account.
+  - Request speed (per agent key or network address), the cap, and one item per customer during a drop.
   - The approving PayPal account doesn't match the pass.
   - Outcome: **allow / step-up / throttle / block**, each with a reason code.
-- [ ] **Drop mode:** limited stock. Winners are captured; losing authorizations are voided automatically.
-- [ ] **PayPal webhooks:** order approved, payment captured, authorization voided.
+  - *Dropped: "several passes on one account". The payer match and per-customer limit cover the same abuse.*
+- [x] **Drop mode:** limited stock taken atomically at approval. After the customer approves, the payment is charged if every check passes; otherwise the hold is released automatically (payer mismatch, already bought, sold out).
+- [ ] **PayPal webhooks:** order approved, payment captured, authorization voided. *Moved to Phase 3: PayPal can only send them to a public URL, so they come with hosting.*
 - [ ] **AI features (Gemini free tier):**
   - A plain-English explanation of each decision, cached so we stay inside free limits.
   - The merchant's plain-English rules converted into settings, shown to the merchant for confirmation before saving.
 - [ ] **Demo agents:**
-  1. A real AI shopping assistant with a valid pass, with a scripted fallback.
-  2. A scalper bot swarm with no identity.
-  3. A signed agent with no linked customer.
-- [ ] **One-click "Run the drop" simulation** so judges can see everything without any API keys.
+  1. A real AI shopping assistant with a valid pass, with a scripted fallback. *Scripted version done (Ava); the Gemini-driven version is next.*
+  2. [x] A scalper bot swarm with no identity (58 bots from documentation-only IP ranges).
+  3. [x] A signed agent with no linked customer (Kestrel), plus Juniper with a revoked pass.
+- [x] **One-click "Run the drop" simulation** so judges can see everything without any API keys. Verified Oct 31: 14 visitors, 44 allowed, 30 blocked, 20 throttled, 2 step-ups with real PayPal orders.
+- [x] Temporary test pages until the designs land: `/monitor.html` (live table + Run the drop), `/approve/<token>`, `/link/<id>` and `/link` (My passes).
 
 **You**
 - [ ] **By Tue Nov 3:** final designs for all 7 screens in Figma (see `docs/DESIGN_BRIEF.md`). Share the link with view access. These are the designs we stick with.
