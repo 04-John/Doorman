@@ -5,7 +5,6 @@ import { getAppToken, paypal, PayPalError } from "../paypal/client.js";
 interface MerchantInfo {
   payer_id?: string;
   emails?: { value: string; primary?: boolean }[];
-  address?: { country?: string };
 }
 
 try {
@@ -16,18 +15,16 @@ try {
   const login = scopes.includes("openid");
   console.log(
     login
-      ? "OK  Log in with PayPal looks enabled on this app."
+      ? "OK  This app has the permission Log in with PayPal needs (a real login in Phase 1 confirms it)."
       : "--  Log in with PayPal not detected on this app yet. Check it's ticked and saved; we'll also confirm with a real login in Phase 1.",
   );
 
   try {
     const me = await paypal<MerchantInfo>("/v1/identity/oauth2/userinfo?schema=paypalv1.1");
     const email = me.emails?.find((e) => e.primary)?.value ?? me.emails?.[0]?.value ?? "unknown";
-    const country = me.address?.country ?? "unknown";
-    console.log(`OK  App belongs to sandbox business account ${email} (country: ${country}).`);
-    if (country !== "US" && country !== "unknown") {
-      console.log("!!  This should be a US business account. Create the app under a US business sandbox account instead.");
-    }
+    // PayPal doesn't return the account's country here, so this has to be checked by eye.
+    console.log(`??  App belongs to sandbox business account ${email}`);
+    console.log("    In Testing Tools > Sandbox Accounts, its Country must be US. If not, create the app under a US business account.");
   } catch {
     console.log("--  Couldn't read the business account details (not a problem for now).");
   }
