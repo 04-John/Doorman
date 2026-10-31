@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file=../../.env src/index.ts",
+    "dev": "node --watch --import tsx --env-file=../../.env src/index.ts",
     "start": "tsx src/index.ts",
     "check:paypal": "tsx --env-file=../../.env src/scripts/check-paypal.ts",
     "demo:agent": "tsx src/scripts/agent-demo.ts",
