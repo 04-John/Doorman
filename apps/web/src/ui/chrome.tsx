@@ -77,12 +77,14 @@ export function MerchantTopBar() {
       <NavLink to="/" aria-label="Doorman home" style={{ display: "flex" }}>
         <Logo dark />
       </NavLink>
-      <div style={{ width: 1, height: 22, background: "rgba(255,255,255,.2)" }} />
-      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 500 }}>
+      <div className="dm-hide-narrow" style={{ width: 1, height: 22, background: "rgba(255,255,255,.2)" }} />
+      <div className="dm-hide-narrow" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 500, whiteSpace: "nowrap" }}>
         <div style={{ width: 24, height: 24, borderRadius: 6, background: "#2B2E35", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>SS</div>
         Static Supply
       </div>
-      <SandboxTag dark />
+      <span className="dm-hide-narrow">
+        <SandboxTag dark />
+      </span>
       <nav style={{ marginLeft: "auto", display: "flex", gap: 4, fontSize: 14, fontWeight: 500 }}>
         <NavLink to="/dashboard" style={navStyle}>
           Dashboard

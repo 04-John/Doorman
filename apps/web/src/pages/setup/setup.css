@@ -1,0 +1,126 @@
+/* Merchant setup + Rules: responsive layout and motion that inline styles can't express. */
+.su-topbar {
+  flex: none;
+  background: #15171c;
+  overflow-x: auto;
+}
+.su-main {
+  width: 100%;
+  margin: 0 auto;
+  padding: 44px 24px 80px;
+}
+.su-title {
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 8px 0 26px;
+}
+.su-card {
+  background: #ffffff;
+  border: 1px solid #e4e2dc;
+  border-radius: 16px;
+  padding: 28px;
+}
+.su-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.su-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+.su-step {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  border-radius: 4px;
+}
+.su-conn {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 22px;
+  padding: 16px 18px;
+  border-radius: 12px;
+}
+
+/* Product row: thumbnail, name, price, stock, drop switch. */
+.su-prod-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 90px 110px 150px;
+  grid-template-areas: "img name price stock drop";
+  gap: 16px;
+  align-items: center;
+  padding: 12px 16px;
+}
+.su-drop-fields {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 0 16px 16px 84px;
+}
+.su-rules-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 20px;
+  margin-bottom: 24px;
+}
+
+/* Rule cards reveal, staggered: 400ms, +90ms each (delay set inline). */
+@keyframes su-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.su-reveal {
+  animation: su-rise 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .su-reveal {
+    animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .su-grid2 {
+    grid-template-columns: 1fr;
+  }
+  .su-main {
+    padding: 28px 16px 56px;
+  }
+  .su-card {
+    padding: 20px;
+  }
+  .su-title {
+    font-size: 28px;
+  }
+  .su-prod-row {
+    grid-template-columns: 52px 1fr auto;
+    grid-template-areas:
+      "img name price"
+      "img stock drop";
+    gap: 4px 12px;
+  }
+  .su-drop-fields {
+    grid-template-columns: 1fr;
+    padding: 0 16px 16px;
+  }
+  .su-rules-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+}

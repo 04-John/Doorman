@@ -1,0 +1,184 @@
+/* Storefront: responsive gutters and hover states that inline styles can't express. */
+.sf-page {
+  min-height: 100%;
+  background: #ffffff;
+}
+.sf-gutter {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+.sf-banner {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 9px 20px;
+  background: #15171c;
+  color: #ffffff;
+  font-size: 13.5px;
+  text-align: center;
+}
+.sf-header {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eeede8;
+}
+.sf-nav {
+  display: flex;
+  gap: 22px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.sf-nav a,
+.sf-footer a {
+  color: #4a4d55;
+}
+.sf-nav a:hover,
+.sf-footer a:hover {
+  color: #15171c;
+}
+.sf-wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.sf-hero {
+  padding-top: 40px;
+  padding-bottom: 56px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+  gap: 48px;
+  align-items: center;
+}
+.sf-title {
+  font-size: clamp(44px, 6vw, 80px);
+  line-height: 0.95;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  margin: 0;
+}
+.sf-products {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 20px;
+}
+.sf-agents {
+  padding-top: 56px;
+  padding-bottom: 56px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 40px;
+  align-items: center;
+}
+.sf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sf-btn {
+  height: 54px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+.sf-btn-primary {
+  padding: 0 28px;
+  border: 0;
+  background: #15171c;
+  color: #ffffff;
+}
+.sf-btn-primary:hover {
+  background: #2b2e35;
+  color: #ffffff;
+}
+.sf-btn-secondary {
+  padding: 0 20px;
+  border: 1.5px solid #c9c6bd;
+  background: #ffffff;
+  color: #15171c;
+}
+.sf-btn-secondary:hover {
+  background: #faf9f6;
+  color: #15171c;
+}
+.sf-size {
+  width: 52px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1.5px solid #d3d0c8;
+  background: #ffffff;
+  color: #15171c;
+  font-size: 16px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+.sf-size[aria-pressed="true"] {
+  border: 2px solid #15171c;
+  font-weight: 700;
+}
+.sf-size:hover {
+  border-color: #8e919a;
+}
+.sf-size[aria-pressed="true"]:hover {
+  border-color: #15171c;
+}
+.sf-live-dot {
+  animation: dm-pulse 1.6s infinite;
+}
+.sf-footer {
+  padding-top: 22px;
+  padding-bottom: 22px;
+  font-size: 13.5px;
+  color: #6b6e76;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-live-dot {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .sf-gutter {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .sf-banner {
+    padding: 9px 16px;
+  }
+  .sf-header {
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    padding-top: 16px;
+    padding-bottom: 14px;
+  }
+  .sf-nav {
+    order: 3;
+    width: 100%;
+    gap: 20px;
+  }
+  .sf-hero {
+    padding-top: 20px;
+    padding-bottom: 40px;
+    gap: 28px;
+  }
+  .sf-agents {
+    padding-top: 40px;
+    padding-bottom: 40px;
+    gap: 28px;
+  }
+  .sf-actions .sf-btn {
+    flex: 1 1 100%;
+  }
+}

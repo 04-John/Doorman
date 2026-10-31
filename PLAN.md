@@ -31,10 +31,13 @@
     - **You tested Phase 2 end to end:** Kestrel's step-up was charged; Ava paid from buyer 2 was released for payer mismatch.
     - **AI added:** explanations, rule writer, Gemini-driven Ava.
     - **Fixed:** a Windows-level `GEMINI_API_KEY` from another project was overriding ours; `.env` now wins locally.
+    - **Designs exported** (`doorman/design/`; the file names were shifted on export, so contents ≠ names).
+    - **All 7 screens built** from them and screenshot-checked.
+    - **Fixed:** the live feed could crash the server when a browser tab closed mid-update; a server that can't bind its port now exits so the watcher restarts it.
 - **Next step:**
-  - You: finish the designs (export them into `doorman/design/`).
-  - Claude, while waiting: Phase 3 prep (production build, hosting setup, README).
-- **Blocked on:** designs, for the interface build.
+  - You: restart `npm run dev` and click through the new screens, starting at http://127.0.0.1:5173/. Create a Render account (sign in with GitHub).
+  - Claude: deploy to Render, add webhooks, README.
+- **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
 
 ---
@@ -132,9 +135,13 @@
 
 **Claude**
 - [ ] **Deploy first (Nov 5):** server on Render, database on Neon, public URL working.
+  - Ready: `render.yaml` (one free web service, US East). Production mode was tested locally on Oct 31: the server serves the built app, and every page route plus the API works from one URL.
   - Needs: you sign up for Render with GitHub and look for the hackathon credit (Render sponsor page or Discord).
-- [ ] Build the 7 screens from your designs (React).
-- [ ] Use AG Grid for the live traffic table (sponsor prize target) and update it live as agents arrive.
+- [x] Build the 7 screens from your designs (React), done Oct 31, ahead of schedule:
+  - Dashboard + detail panel + Ava's conversation, Approve purchase, Link your agent / My passes (Claude).
+  - Demo hub, Storefront, Setup + Rules (helper agent).
+  - All screenshot-checked against the designs at desktop and phone sizes.
+- [x] Use AG Grid for the live traffic table (sponsor prize target) and update it live as agents arrive. It is themed with the design system's grid params and uses custom cells and a new-row flash.
 - [ ] Add the live URL to the PayPal app's Log in with PayPal return URLs.
 
 **You**

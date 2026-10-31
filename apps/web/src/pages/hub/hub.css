@@ -1,0 +1,166 @@
+/* Demo hub: responsive gutters and hover states that inline styles can't express. */
+.hub-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.hub-gutter {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+.hub-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+.hub-tag {
+  margin-left: auto;
+  display: flex;
+}
+.hub-github {
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #4a4d55;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.hub-github:hover {
+  color: #15171c;
+}
+.hub-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding-top: 56px;
+  padding-bottom: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+.hub-title {
+  font-size: clamp(40px, 6vw, 72px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  margin: 16px 0 0;
+  text-wrap: balance;
+}
+.hub-lede {
+  font-size: 19px;
+  line-height: 1.55;
+  color: #4a4d55;
+  margin: 22px 0 0;
+  max-width: 640px;
+  text-wrap: pretty;
+}
+.hub-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+.hub-cta {
+  height: 56px;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+.hub-cta-primary {
+  padding: 0 26px 0 22px;
+  gap: 12px;
+  background: #15171c;
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(21, 23, 28, 0.22);
+}
+.hub-cta-primary:hover {
+  background: #2b2e35;
+  color: #ffffff;
+}
+.hub-cta-secondary {
+  padding: 0 22px;
+  border: 1.5px solid #c9c6bd;
+  background: #ffffff;
+  color: #15171c;
+}
+.hub-cta-secondary:hover {
+  background: #faf9f6;
+  color: #15171c;
+}
+.hub-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 16px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.hub-footer {
+  border-top: 1px solid #e4e2dc;
+  padding-top: 18px;
+  padding-bottom: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  font-size: 14px;
+  color: #6b6e76;
+}
+.hub-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+.hub-footer a {
+  color: #4a4d55;
+  font-weight: 500;
+}
+.hub-footer a:hover {
+  color: #15171c;
+}
+.hub-note {
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .hub-gutter {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .hub-header {
+    flex-wrap: wrap;
+    row-gap: 12px;
+    padding-top: 16px;
+    padding-bottom: 4px;
+  }
+  .hub-tag {
+    order: 3;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+  .hub-github {
+    margin-left: auto;
+  }
+  .hub-main {
+    padding-top: 28px;
+    padding-bottom: 48px;
+    gap: 40px;
+  }
+  .hub-lede {
+    font-size: 17px;
+  }
+  .hub-cta {
+    flex: 1 1 100%;
+  }
+  .hub-note {
+    margin-left: 0;
+  }
+}

@@ -42,6 +42,14 @@ app.onError((err, c) => {
   return c.json({ error: "internal_error" }, 500);
 });
 
-serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
+// A stray rejected promise (say, writing to a browser that just left) shouldn't end a live demo.
+process.on("unhandledRejection", (reason) => console.error("[doorman] unhandled rejection:", reason));
+
+const server = serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`Doorman server running at http://localhost:${port}`);
+});
+// If the port is taken, exit so the watcher (or the host) can start a clean process.
+server.on("error", (err) => {
+  console.error("[doorman] server failed to start:", err.message);
+  process.exit(1);
 });

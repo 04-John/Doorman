@@ -180,7 +180,8 @@ export const merchantRoutes = new Hono()
   // Live feed for the dashboard (Server-Sent Events).
   .get("/api/events/stream", (c) =>
     streamSSE(c, async (stream) => {
-      const send = (row: EventRow) => void stream.writeSSE({ event: "event", data: JSON.stringify(row) });
+      // A write can fail if the browser has just gone away; that must never take the server down.
+      const send = (row: EventRow) => void stream.writeSSE({ event: "event", data: JSON.stringify(row) }).catch(() => eventBus.off("event", send));
       eventBus.on("event", send);
       stream.onAbort(() => {
         eventBus.off("event", send);
