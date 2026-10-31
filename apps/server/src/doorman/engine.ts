@@ -120,11 +120,19 @@ export function decide(input: DecisionInput): DecisionResult {
       detail: `${input.customerAlreadyBought} bought so far (limit ${policy.dropLimitPerCustomer} per customer)`,
     };
     if (item.quantity > policy.dropLimitPerCustomer) {
-      checks.drop_limit.status = "fail";
+      checks.drop_limit = {
+        id: "drop_limit",
+        status: "fail",
+        detail: `Asked for ${item.quantity} (limit ${policy.dropLimitPerCustomer} per customer)`,
+      };
       return result("blocked", "OVER_DROP_LIMIT", `Tried to buy ${item.quantity}; the limit is ${policy.dropLimitPerCustomer} per customer`);
     }
     if (tier === "verified" && input.customerAlreadyBought + item.quantity > policy.dropLimitPerCustomer) {
-      checks.drop_limit.status = "fail";
+      checks.drop_limit = {
+        id: "drop_limit",
+        status: "fail",
+        detail: `Already has ${input.customerAlreadyBought} (limit ${policy.dropLimitPerCustomer} per customer)`,
+      };
       return result("blocked", "REPEAT_BUYER", `Another one for the same customer (limit ${policy.dropLimitPerCustomer})`);
     }
   }

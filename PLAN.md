@@ -28,10 +28,13 @@
     - **Browser tests passed:** login, capture, void and the payer mismatch. Phase 1 is done.
     - **Neon and Gemini keys added.** Gemini (gemini-3.5-flash) works on the free tier.
     - **Phase 2 core built and tested:** database, risk rules, passes, MCP store tools, checkout to approval to charge or release, and the drop simulation.
+    - **You tested Phase 2 end to end:** Kestrel's step-up was charged; Ava paid from buyer 2 was released for payer mismatch.
+    - **AI added:** explanations, rule writer, Gemini-driven Ava.
+    - **Fixed:** a Windows-level `GEMINI_API_KEY` from another project was overriding ours; `.env` now wins locally.
 - **Next step:**
-  - You: log in once on `/lab.html` as buyer 1 (so Ava has a customer), then try the full flow on `/monitor.html`. Keep designing.
-  - Claude: AI explanations, the AI rule writer, and the Gemini-driven Ava.
-- **Blocked on:** nothing.
+  - You: finish the designs (export them into `doorman/design/`).
+  - Claude, while waiting: Phase 3 prep (production build, hosting setup, README).
+- **Blocked on:** designs, for the interface build.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
 
 ---
@@ -101,11 +104,17 @@
   - *Dropped: "several passes on one account". The payer match and per-customer limit cover the same abuse.*
 - [x] **Drop mode:** limited stock taken atomically at approval. After the customer approves, the payment is charged if every check passes; otherwise the hold is released automatically (payer mismatch, already bought, sold out).
 - [ ] **PayPal webhooks:** order approved, payment captured, authorization voided. *Moved to Phase 3: PayPal can only send them to a public URL, so they come with hosting.*
-- [ ] **AI features (Gemini free tier):**
+- [x] **AI features (Gemini free tier):**
   - A plain-English explanation of each decision, cached so we stay inside free limits.
+    - Uses `gemini-3.5-flash-lite` (about 1 second). Identical situations share one explanation.
+    - Falls back to a rules-based sentence if Gemini is down.
   - The merchant's plain-English rules converted into settings, shown to the merchant for confirmation before saving.
-- [ ] **Demo agents:**
-  1. A real AI shopping assistant with a valid pass, with a scripted fallback. *Scripted version done (Ava); the Gemini-driven version is next.*
+    - `POST /api/rules/compile` uses `gemini-3.5-flash`.
+    - Anything it can't express is listed as "unsupported", never silently dropped.
+- [x] **Demo agents:**
+  1. A real AI shopping assistant with a valid pass, with a scripted fallback.
+     - Ava runs on Gemini. Asked for 2 hoodies, she's refused ("limit 1 per customer"), adapts to 1, checks out, and sends John the approval link.
+     - Her conversation is at `GET /api/drop/transcript`.
   2. [x] A scalper bot swarm with no identity (58 bots from documentation-only IP ranges).
   3. [x] A signed agent with no linked customer (Kestrel), plus Juniper with a revoked pass.
 - [x] **One-click "Run the drop" simulation** so judges can see everything without any API keys. Verified Oct 31: 14 visitors, 44 allowed, 30 blocked, 20 throttled, 2 step-ups with real PayPal orders.

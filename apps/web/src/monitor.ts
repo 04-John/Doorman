@@ -32,14 +32,35 @@ function row(e: EventRow): HTMLTableRowElement {
 }
 
 async function showDetail(id: string) {
-  const detail = await api<{ order?: { approvalUrl: string } }>(`/api/events/${id}`);
   const panel = $("detail");
   panel.style.display = "block";
+  panel.innerHTML = "Loading… (the AI explanation takes a few seconds)";
+  const detail = await api<{ order?: { approvalUrl: string }; explanation: { text: string; source: string } }>(`/api/events/${id}`);
   panel.innerHTML =
     `<button id="close">Close</button>` +
+    `<h3>Why Doorman did this</h3><p>${detail.explanation.text}</p><p class="muted">Written by ${detail.explanation.source === "ai" ? "Gemini" : "the built-in rules"}</p>` +
     (detail.order ? `<p><a href="${detail.order.approvalUrl}" target="_blank">Open the customer's approval link</a></p>` : "") +
     `<pre>${JSON.stringify(detail, null, 2)}</pre>`;
   $("close").addEventListener("click", () => (panel.style.display = "none"));
+}
+
+interface TranscriptEntry {
+  from: "customer" | "ava" | "store";
+  text: string;
+  tool?: string;
+  ok?: boolean;
+}
+
+async function showTranscript() {
+  const { transcript } = await api<{ transcript: TranscriptEntry[] }>("/api/drop/transcript");
+  $("transcript").innerHTML = transcript
+    .map((t) => {
+      if (t.from !== "store") return `<p><b>${t.from === "customer" ? "John" : "Ava"}:</b> ${t.text}</p>`;
+      const { request, response } = JSON.parse(t.text) as { request: unknown; response: { reason?: string } };
+      const outcome = t.ok ? "ok" : `refused: ${response.reason}`;
+      return `<p class="muted">→ ${t.tool}(${JSON.stringify(request)}) · ${outcome}</p>`;
+    })
+    .join("");
 }
 
 async function refresh() {
@@ -79,5 +100,5 @@ new EventSource("/api/events/stream").addEventListener("event", (msg) => {
   $("rows").prepend(row(JSON.parse((msg as MessageEvent<string>).data)));
 });
 
-await Promise.all([loadEvents(), refresh()]);
-setInterval(() => void refresh(), 2000);
+await Promise.all([loadEvents(), refresh(), showTranscript()]);
+setInterval(() => void Promise.all([refresh(), showTranscript()]), 2000);

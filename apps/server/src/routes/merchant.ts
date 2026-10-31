@@ -9,7 +9,10 @@ import { approvalUrl } from "../doorman/checkout.js";
 import { eventBus, type EventRow } from "../doorman/events.js";
 import { policySchema } from "../doorman/policy.js";
 import { currentDrop, getProduct, getRules, saveRules } from "../doorman/store.js";
-import { runDrop, simulationRunning } from "../sim/run.js";
+import { explain } from "../ai/explain.js";
+import { aiEnabled } from "../ai/model.js";
+import { compileRules, describePolicy } from "../ai/rules.js";
+import { avaTranscript, runDrop, simulationRunning } from "../sim/run.js";
 
 async function summary() {
   const drop = await currentDrop();
@@ -85,6 +88,7 @@ async function eventDetail(id: string) {
       paypal: { orderId: order.paypalOrderId, authorizationId: order.authorizationId, captureId: order.captureId },
     },
     timeline: timeline.reverse(),
+    explanation: await explain({ event, order, timeline }),
   };
 }
 
@@ -143,12 +147,34 @@ export const merchantRoutes = new Hono()
     }
   })
 
-  .get("/api/rules", async (c) => c.json(await getRules()))
+  .get("/api/drop/transcript", (c) => c.json({ transcript: avaTranscript() }))
+
+  .get("/api/rules", async (c) => {
+    const rules = await getRules();
+    return c.json({ ...rules, cards: describePolicy(rules.policy) });
+  })
+
+  // Plain English in, proposed settings out. Not saved until the merchant confirms with PUT.
+  .post("/api/rules/compile", async (c) => {
+    if (!aiEnabled) return c.json({ error: "ai_unavailable", message: "Add GEMINI_API_KEY to use the rule writer." }, 503);
+    const body = await c.req.json().catch(() => null);
+    if (typeof body?.rulesText !== "string" || !body.rulesText.trim() || body.rulesText.length > 2000) {
+      return c.json({ error: "invalid_rules_text" }, 400);
+    }
+    const { policy } = await getRules();
+    try {
+      return c.json(await compileRules(body.rulesText, policy));
+    } catch (err) {
+      console.warn("[ai] rule compile failed:", err instanceof Error ? err.message : err);
+      return c.json({ error: "compile_failed", message: "Couldn't turn that into rules. Try rewording it." }, 422);
+    }
+  })
 
   .put("/api/rules", async (c) => {
     const body = await c.req.json().catch(() => null);
     const policy = policySchema.safeParse(body?.policy);
     if (!policy.success || typeof body?.rulesText !== "string") return c.json({ error: "invalid_rules" }, 400);
     await saveRules(policy.data, body.rulesText);
-    return c.json(await getRules());
+    const rules = await getRules();
+    return c.json({ ...rules, cards: describePolicy(rules.policy) });
   });

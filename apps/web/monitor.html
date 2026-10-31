@@ -13,6 +13,7 @@
       .allowed { color: #0a7d2c; } .step_up { color: #b26b00; } .throttled { color: #6941c6; } .blocked { color: #b42318; }
       #detail { position: fixed; right: 0; top: 0; bottom: 0; width: 460px; background: #fff; border-left: 1px solid #ccc; padding: 16px; overflow: auto; display: none; }
       pre { white-space: pre-wrap; font-size: 12px; }
+      .muted { color: #666; } #transcript p { margin: 4px 0; font-size: 14px; } details { margin: 12px 0; }
     </style>
   </head>
   <body>
@@ -20,6 +21,7 @@
     <h1>Doorman monitor <button id="run">Run the drop</button></h1>
     <p id="drop"></p>
     <p id="kpis"></p>
+    <details open><summary><b>Ava's conversation</b> (Gemini, shopping for John through Doorman)</summary><div id="transcript"></div></details>
     <table>
       <thead><tr><th>Time</th><th>Agent</th><th>Operator</th><th>Identity</th><th>Customer</th><th>Action</th><th>Decision</th><th>Reason</th><th>Amount</th></tr></thead>
       <tbody id="rows"></tbody>

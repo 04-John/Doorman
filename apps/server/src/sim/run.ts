@@ -8,10 +8,16 @@ import { issuePass } from "../doorman/passes.js";
 import type { CustomerRow } from "../doorman/sessions.js";
 import { DROP_PRODUCT_ID, startDrop, type DropRow } from "../doorman/store.js";
 import { env } from "../env.js";
+import { aiEnabled } from "../ai/model.js";
 import { demoKey, StoreAgent } from "./agent-client.js";
+import { runAva, type TranscriptEntry } from "./ava-ai.js";
 
 let running = false;
 export const simulationRunning = () => running;
+
+// Ava's conversation from the latest run, for the dashboard.
+let transcript: TranscriptEntry[] = [];
+export const avaTranscript = () => transcript;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const log = (msg: string) => console.log(`[sim] ${msg}`);
@@ -73,9 +79,10 @@ async function script() {
   log("Scalper bots arrive and start browsing");
   await swarm(8, (i) => `198.51.100.${20 + i}`, (bot) => bot.call("search_products", { query: "hoodie" }));
 
-  await sleep(1500);
-  log("Ava browses for her customer");
-  await ava.call("search_products", { query: "hoodie" });
+  // The AI Ava thinks at her own pace, so she shops alongside the rest of the drop.
+  transcript = [];
+  log(aiEnabled ? "Ava (Gemini) starts shopping for her customer" : "Ava browses for her customer");
+  const avaRun = aiEnabled ? runAva(ava, transcript) : ava.call("search_products", { query: "hoodie" }).then(() => "failed_early" as const);
 
   await sleep(1500);
   log("The swarm tries to grab hoodies");
@@ -83,14 +90,6 @@ async function script() {
     await bot.call("search_products", { query: "night shift" });
     await bot.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1 + (i % 3) });
   });
-
-  await sleep(1500);
-  log("Ava checks out");
-  const cart = await ava.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1 });
-  if (cart.ok) {
-    const order = await ava.call("checkout", { cartId: cart.data.cartId });
-    if (order.ok) log(`Ava's approval link for her customer: ${order.data.approvalUrl}`);
-  }
 
   await sleep(1500);
   log("Kestrel (signed, no customer linked) tries to buy");
@@ -105,13 +104,25 @@ async function script() {
   log("Juniper tries to buy with a revoked pass");
   await juniper.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1 });
 
-  await sleep(1500);
-  log("Ava tries for a second hoodie");
-  await ava.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1 });
-
+  // 25 bots × 2 requests from one address: well past the per-minute limit whatever the timing.
   await sleep(1500);
   log("The swarm comes back for another go, hammering from one address");
-  await swarm(20, () => "203.0.113.10", (bot) => bot.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 2 }));
+  await swarm(25, () => "203.0.113.10", async (bot) => {
+    await bot.call("search_products", { query: "hoodie" });
+    await bot.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 2 });
+  });
+
+  // A scripted Ava stands in only if the AI never reached the store.
+  if ((await avaRun) === "failed_early") {
+    log("Ava checks out (scripted)");
+    const cart = await ava.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1 });
+    if (cart.ok) {
+      const order = await ava.call("checkout", { cartId: cart.data.cartId });
+      if (order.ok) log(`Ava's approval link for her customer: ${order.data.approvalUrl}`);
+    }
+    log("Ava tries for a second hoodie");
+    await ava.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1 });
+  }
 
   await Promise.all([ava.close(), kestrel.close(), juniper.close()]);
   log("Done. Approve Ava's or Kestrel's link to complete a purchase.");

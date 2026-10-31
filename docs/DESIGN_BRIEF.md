@@ -108,6 +108,13 @@ Design them in this priority order: the first four matter most.
     - New rows appear at the top while the drop runs, with a subtle highlight on new rows.
     - Clicking a row opens Screen 2.
     - Filters above the table: Decision (All / Allowed / Step up / Throttled / Blocked) and Identity (All / Verified customer / Signed agent / Unknown).
+- **Agent conversation panel** (recommended, strong for the video). Ava is a real AI agent (Gemini). During a drop, show her chat as it happens:
+  - **John:** "Get me two Night Shift Hoodies, one for me and one for my brother…"
+  - **Store → Ava:** `add_to_cart ×2` · *Refused: Tried to buy 2; the limit is 1 per customer*
+  - **Store → Ava:** `add_to_cart ×1` · OK → `checkout` · OK
+  - **Ava → John:** "The store has a limit of 1 per customer, so I grabbed one for $68. Approve it here: [link]"
+
+  Show refusals visibly (red or amber), because they prove Doorman is talking to the agent, not just blocking it. A collapsible side panel or a card under the KPIs both work.
 - **Optional side widget:** "Top blocked sources" or a small requests-per-second sparkline. Only if it fits.
 
 **States to design**
@@ -143,7 +150,10 @@ Design them in this priority order: the first four matter most.
   - Drop limit (1 per customer)
   - Request rate normal
   - Payer match (after approval in PayPal)
-- **"Why Doorman did this":** a short AI-written paragraph. Sample: *"Ava is signed with a registered key and carries a pass from John Doe, whose PayPal account is verified. The $68 hoodie is within his $150 cap and he hasn't bought one yet, so Doorman let the checkout through. John approved in PayPal, the payer matched his pass, and the payment was charged."*
+- **"Why Doorman did this":** a short AI-written paragraph.
+  - It takes about 3 seconds to write the first time, so design a **loading state** (a shimmer, or "Writing explanation…").
+  - Add a small "Written by AI" label.
+  - The panel itself opens instantly. Sample: *"Ava is signed with a registered key and carries a pass from John Doe, whose PayPal account is verified. The $68 hoodie is within his $150 cap and he hasn't bought one yet, so Doorman let the checkout through. John approved in PayPal, the payer matched his pass, and the payment was charged."*
 - **Timeline:** Browsed → Added to cart → Checkout → Customer approved in PayPal → Held $68 → Charged $68 (or Released).
 - **PayPal references** (small, technical): Order ID, Authorization ID, Capture ID.
 - **Actions:**
