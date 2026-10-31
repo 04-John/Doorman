@@ -19,6 +19,8 @@ export function loginUrl(state: string): string {
   const params = new URLSearchParams({
     flowEntry: "static",
     client_id: env.PAYPAL_CLIENT_ID,
+    // Not in PayPal's docs example, but required: without it PayPal rejects the request.
+    response_type: "code",
     scope: SCOPES.join(" "),
     redirect_uri: env.PAYPAL_LOGIN_RETURN_URL,
     state,
