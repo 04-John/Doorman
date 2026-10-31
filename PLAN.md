@@ -18,15 +18,19 @@
 ---
 
 ## Status
-- **Phase:** 1 (prove the risky parts), checkpoint Sun Nov 1. The schedule was re-planned on Oct 30: 12 days left, every later phase shifted.
+- **Phase:** 2 (core engine). Phase 1 passed its checkpoint on Oct 31, a day early. The schedule was re-planned on Oct 30.
 - **Done:**
   - **Oct 27:** GitHub repo `04-John/Doorman` created (private), PayPal developer login, 1 US personal sandbox account.
   - **Oct 30:** project skeleton built (server, PayPal client, key-check script, README, MIT license), first commit pushed to GitHub.
   - **Oct 31:**
     - Doorman app created under the US business account, with Log in with PayPal on (return URL on 127.0.0.1). Keys verified.
     - Phase 1 built: payments (authorize, capture, void), Log in with PayPal, payer-ID match, agent signatures, the first MCP store tool, and the test bench.
-- **Next step:** you run the browser test on the test bench (login, approve, capture or void, and the mismatch test with buyer 2).
-- **Blocked on:** your browser test
+    - **Browser tests passed:** login, capture, void and the payer mismatch. Phase 1 is done.
+- **Next step:**
+  - You: create the free Neon database and add `DATABASE_URL` to `.env`, add the Gemini key if it isn't there yet, and send the rough screen sketches.
+  - Claude: start the Phase 2 risk rules and agent pass.
+- **Blocked on:** nothing. The database is needed by Nov 2.
+- **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
 
 ---
 
@@ -39,7 +43,7 @@
 - [x] PayPal Developer: logged in at https://developer.paypal.com
   - [x] Testing Tools → Sandbox Accounts → **Create account**: a new **Business** account, country **United States** (`sb-vg98x49213061@business.example.com`). Don't use the NG accounts as the merchant.
   - [x] First US Personal account (buyer 1)
-  - [ ] Second US Personal account (buyer 2, used for the "wrong person approved it" test)
+  - [x] Second US Personal account (buyer 2, used for the "wrong person approved it" test)
   - [x] Apps & Credentials (Sandbox) → **Create App** named "Doorman", type Merchant, linked to the new US Business account.
   - [x] In the app: **Other features** → tick **Log in with PayPal** → **Advanced Settings**:
     - Return URL `http://127.0.0.1:5173/auth/paypal/callback`. PayPal rejected `localhost`, so always open the app at `http://127.0.0.1:5173`.
@@ -63,9 +67,9 @@
 
 **Claude**
 - [x] PayPal access: fetch and cache a sandbox token, and attach a unique request ID to every payment call so a retry can't charge twice.
-- [ ] Payments: create an order that **authorizes** without charging, have the buyer approve on a test page (PayPal JS SDK v6), then **capture** or **void** it. *Built. Order creation is verified in the sandbox; waiting on your browser test.*
+- [x] Payments: create an order that **authorizes** without charging, have the buyer approve on a test page (PayPal JS SDK v6), then **capture** or **void** it. Confirmed Oct 31: capture → COMPLETED, void → VOIDED.
 - [x] Log in with PayPal: sign a sandbox buyer in and read `verified_account`, email and user ID. Confirmed Oct 31: returns name, email, verified=true and payer ID. Needs `response_type=code`, which PayPal's docs example omits.
-- [ ] Match the payer ID from Log in with PayPal (the "PayPal account ID" attribute) against the payer ID on the approved order. *Built; waiting on your browser test.*
+- [x] Match the payer ID from Log in with PayPal (the "PayPal account ID" attribute) against the payer ID on the approved order. Confirmed Oct 31: same buyer → match, different buyer → MISMATCH.
 - [x] Agent signatures: an agent signs each request with an Ed25519 key (RFC 9421 HTTP Message Signatures), and Doorman verifies the signature. 6 tests pass. `npm run demo:agent` shows unsigned, signed and tampered requests handled correctly.
 - [x] Agent-facing server: a bare MCP server with one tool, `search_products`.
 - [x] Test bench at `http://127.0.0.1:5173/lab.html` (start everything with `npm run dev`).
@@ -78,10 +82,10 @@
   4. Customer "link your agent" page (log in with PayPal, set cap and expiry, revoke)
   5. Buyer approval page and a minimal storefront
 
-**Checkpoint, Sun Nov 1 (go/no-go)**
-- [ ] Authorize → approve → capture/void works in the sandbox.
-- [ ] Log in with PayPal works. **If not:** we link the pass to the customer on their first approved PayPal order instead.
-- [ ] Signed request verified end to end.
+**Checkpoint, Sun Nov 1 (go/no-go): PASSED Oct 31, a day early**
+- [x] Authorize → approve → capture/void works in the sandbox.
+- [x] Log in with PayPal works. No fallback needed.
+- [x] Signed request verified end to end.
 
 ---
 

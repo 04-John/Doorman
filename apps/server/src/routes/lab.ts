@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { env } from "../env.js";
+import { PayPalError } from "../paypal/client.js";
 import { exchangeCode, fetchProfile, loginUrl, type PayPalProfile } from "../paypal/login.js";
 import { authorizeOrder, captureAuthorization, createAuthorizeOrder, voidAuthorization } from "../paypal/orders.js";
 import { findProduct } from "../store/catalog.js";
@@ -36,7 +37,10 @@ export const labRoutes = new Hono()
       return c.redirect("/lab.html?login=ok");
     } catch (err) {
       console.error("[doorman] Log in with PayPal failed:", err);
-      return c.redirect("/lab.html?login=failed&reason=token_exchange");
+      // Surface PayPal's own reason (e.g. invalid_grant when a one-time code is reused).
+      const detail = err instanceof PayPalError ? (err.body as { error?: string } | undefined)?.error : undefined;
+      const reason = detail ? `token_exchange:${detail}` : "token_exchange";
+      return c.redirect(`/lab.html?login=failed&reason=${encodeURIComponent(reason)}`);
     }
   })
 
