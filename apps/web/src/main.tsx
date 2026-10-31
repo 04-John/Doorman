@@ -1,8 +1,9 @@
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Link as RouterLink, Route, Routes } from "react-router";
+import { BrowserRouter, Outlet, Link as RouterLink, Route, Routes } from "react-router";
 import "./styles/tokens.css";
 import { Spinner } from "./ui/bits";
+import { DemoNav } from "./ui/DemoNav";
 import { ToastProvider } from "./ui/toast";
 
 // Each screen loads on its own, so the customer pages never download the dashboard grid.
@@ -12,12 +13,25 @@ const Setup = lazy(() => import("./pages/Setup"));
 const Storefront = lazy(() => import("./pages/Storefront"));
 const Approve = lazy(() => import("./pages/Approve"));
 const LinkAgent = lazy(() => import("./pages/Link"));
+const Passes = lazy(() => import("./pages/Link").then((m) => ({ default: m.Passes })));
 
 function Loading() {
   return (
     <div style={{ height: "100%", display: "grid", placeItems: "center" }} aria-busy="true">
       <Spinner size={28} />
     </div>
+  );
+}
+
+// Every screen sits under the demo strip, so each one links to all the others.
+function WithDemoNav() {
+  return (
+    <>
+      <DemoNav />
+      <Suspense fallback={<Loading />}>
+        <Outlet />
+      </Suspense>
+    </>
   );
 }
 
@@ -38,8 +52,8 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ToastProvider>
       <BrowserRouter>
-        <Suspense fallback={<Loading />}>
-          <Routes>
+        <Routes>
+          <Route element={<WithDemoNav />}>
             <Route path="/" element={<DemoHub />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/setup" element={<Setup />} />
@@ -48,9 +62,10 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/approve/:token" element={<Approve />} />
             <Route path="/link" element={<LinkAgent />} />
             <Route path="/link/:id" element={<LinkAgent />} />
+            <Route path="/passes" element={<Passes />} />
             <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+          </Route>
+        </Routes>
       </BrowserRouter>
     </ToastProvider>
   </StrictMode>,

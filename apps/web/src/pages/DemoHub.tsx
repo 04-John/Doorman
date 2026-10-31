@@ -73,7 +73,7 @@ export default function DemoHub() {
               </span>
               Open the live demo
             </Link>
-            <Link to="/link" className="hub-cta hub-cta-secondary">
+            <Link to="/store" className="hub-cta hub-cta-secondary">
               Try it as a customer
             </Link>
           </div>
@@ -112,8 +112,10 @@ export default function DemoHub() {
         <nav aria-label="Other screens">
           <span>Other screens:</span>
           <Link to="/store">Storefront</Link>
-          <Link to="/setup">Merchant setup + Rules</Link>
-          <Link to="/link">All customer screens</Link>
+          <Link to="/setup">Merchant setup</Link>
+          <Link to="/rules">Rules</Link>
+          <Link to="/link">Link an agent</Link>
+          <Link to="/passes">My passes</Link>
         </nav>
         <span className="hub-note">Doorman isn't affiliated with PayPal. PayPal buttons are rendered by PayPal.</span>
       </footer>

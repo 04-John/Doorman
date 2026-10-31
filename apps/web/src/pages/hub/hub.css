@@ -1,6 +1,6 @@
 /* Demo hub: responsive gutters and hover states that inline styles can't express. */
 .hub-page {
-  min-height: 100%;
+  min-height: calc(100% - var(--demo-nav-h, 0px));
   display: flex;
   flex-direction: column;
 }

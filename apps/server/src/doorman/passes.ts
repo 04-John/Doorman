@@ -1,7 +1,8 @@
-// Agent passes. An agent asks to be linked; the customer logs in with PayPal,
-// sets a cap and expiry, and approves; the agent then collects its pass token once.
+// Agent passes. Either an agent asks to be linked, or the customer picks the agent
+// themselves; either way they log in with PayPal, set a cap and expiry, and the
+// agent then collects its pass token once.
 import { randomBytes } from "node:crypto";
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { AgentRow } from "../agents/registry.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
@@ -40,7 +41,18 @@ export async function linkRequestView(id: string) {
   };
 }
 
+// A customer has one live pass per agent: a new one replaces the old.
 export async function issuePass(input: { agentKeyId: string; customer: CustomerRow; capCents: number; days: number }) {
+  await db
+    .update(schema.passes)
+    .set({ revokedAt: new Date() })
+    .where(
+      and(
+        eq(schema.passes.agentKeyId, input.agentKeyId),
+        eq(schema.passes.customerPayerId, input.customer.payerId),
+        isNull(schema.passes.revokedAt),
+      ),
+    );
   const token = newPassToken();
   const [pass] = await db
     .insert(schema.passes)
@@ -64,6 +76,32 @@ export async function approveLinkRequest(id: string, customer: CustomerRow, capC
     .set({ status: "approved", passId: pass.id, pendingToken: token })
     .where(eq(schema.linkRequests.id, id));
   return pass;
+}
+
+// The customer chose the agent themselves (from the store, not from a link the
+// agent sent). The token waits until the agent next collects its passes.
+export async function grantPass(agentKeyId: string, customer: CustomerRow, capCents: number, days: number) {
+  const { pass, token } = await issuePass({ agentKeyId, customer, capCents, days });
+  await db
+    .insert(schema.linkRequests)
+    .values({ agentKeyId, status: "approved", passId: pass.id, pendingToken: token, expiresAt: pass.expiresAt });
+  return pass;
+}
+
+// Every pass token waiting for this agent, handed over once.
+export async function collectWaitingPasses(agentKeyId: string) {
+  const waiting = await db
+    .select({ id: schema.linkRequests.id, passId: schema.linkRequests.passId, token: schema.linkRequests.pendingToken, holder: schema.customers.name })
+    .from(schema.linkRequests)
+    .innerJoin(schema.passes, eq(schema.passes.id, schema.linkRequests.passId))
+    .innerJoin(schema.customers, eq(schema.customers.payerId, schema.passes.customerPayerId))
+    .where(and(eq(schema.linkRequests.agentKeyId, agentKeyId), isNotNull(schema.linkRequests.pendingToken)));
+  if (waiting.length === 0) return { status: "none" as const, passes: [] };
+  await db
+    .update(schema.linkRequests)
+    .set({ pendingToken: null })
+    .where(inArray(schema.linkRequests.id, waiting.map((w) => w.id)));
+  return { status: "approved" as const, passes: waiting.map((w) => ({ passId: w.passId!, passToken: w.token!, holder: w.holder })) };
 }
 
 // The agent collects its token. It's handed over once and then forgotten.

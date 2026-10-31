@@ -111,7 +111,7 @@ export default function Setup({ mode = "setup" }: { mode?: "setup" | "rules" }) 
   }
 
   return (
-    <div style={{ minHeight: "100%", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "calc(100% - var(--demo-nav-h, 0px))", display: "flex", flexDirection: "column" }}>
       <div className="su-topbar">
         <MerchantTopBar />
       </div>

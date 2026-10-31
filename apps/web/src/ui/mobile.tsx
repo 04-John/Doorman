@@ -7,7 +7,7 @@ import { ICON, Icon } from "./status";
 export function MobileShell({ brand, right, children }: { brand: "store" | "doorman"; right?: ReactNode; children: ReactNode }) {
   return (
     <div style={{ minHeight: "100%", background: "#FFFFFF" }}>
-      <div style={{ maxWidth: 440, margin: "0 auto", minHeight: "100vh", display: "flex", flexDirection: "column", borderLeft: "1px solid #EEEDE8", borderRight: "1px solid #EEEDE8" }}>
+      <div style={{ maxWidth: 440, margin: "0 auto", minHeight: "calc(100vh - var(--demo-nav-h, 0px))", display: "flex", flexDirection: "column", borderLeft: "1px solid #EEEDE8", borderRight: "1px solid #EEEDE8" }}>
         <header style={{ height: 52, flex: "none", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", borderBottom: "1px solid #EEEDE8" }}>
           {brand === "store" ? (
             <Link to="/store" style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 16, fontWeight: 600 }}>

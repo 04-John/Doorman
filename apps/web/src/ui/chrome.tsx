@@ -95,6 +95,9 @@ export function MerchantTopBar() {
         <NavLink to="/setup" style={navStyle}>
           Settings
         </NavLink>
+        <NavLink to="/store" style={navStyle}>
+          View store
+        </NavLink>
       </nav>
       <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#E9E1D3", color: "#15171C", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700 }} title="Maya, Static Supply">
         M

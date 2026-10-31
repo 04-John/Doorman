@@ -6,6 +6,7 @@ import { authorizeOrder, captureAuthorization, voidAuthorization } from "../payp
 import type { OrderRow } from "./checkout.js";
 import { money, type Decision, type Tier } from "./engine.js";
 import type { EventAction } from "../db/schema.js";
+import { demoAgentByKeyId } from "../sim/demo-agents.js";
 import { recordEvent } from "./events.js";
 import type { CustomerRow } from "./sessions.js";
 import { endDrop, getProduct, getRules, reserveStock, unitsInDrop } from "./store.js";
@@ -20,9 +21,16 @@ export class ApprovalError extends Error {
   }
 }
 
+// Approval links expire, as the customer is told on the page.
+const APPROVAL_MINUTES = 15;
+export const APPROVAL_EXPIRED = "Approval link expired";
+
 async function loadOrder(token: string): Promise<OrderRow> {
   const [order] = await db.select().from(schema.orders).where(eq(schema.orders.approvalToken, token));
   if (!order) throw new ApprovalError(404, "not_found", "This approval link isn't valid.");
+  if (order.status === "awaiting_approval" && order.createdAt.getTime() < Date.now() - APPROVAL_MINUTES * 60_000) {
+    return update(order, { status: "declined", releaseReason: APPROVAL_EXPIRED });
+  }
   return order;
 }
 
@@ -55,9 +63,12 @@ export async function approvalView(token: string) {
     stepUp: order.stepUp,
     paypalOrderId: order.paypalOrderId,
     product: { id: product.id, name: product.name, priceCents: product.priceCents },
+    size: order.size,
     quantity: order.quantity,
     amountCents: order.amountCents,
     agent: agent ? { name: agent.name, operator: agent.operator } : null,
+    // The demo can ask its own agents to try again after a released hold.
+    canRetry: Boolean(agent && demoAgentByKeyId(agent.keyId)),
     pass: pass
       ? { capCents: pass.capCents, expiresAt: pass.expiresAt, customerName: expected?.name ?? null, usedCents: Number(used?.cents ?? 0) }
       : null,
@@ -169,6 +180,13 @@ export async function authorizeApproval(token: string, sessionCustomer: Customer
   order = await update(order, { status: "charged", captureId: capture.id });
   await log("charge", "allowed")("CHARGED", `Charged ${money(order.amountCents)}`);
   return approvalView(token);
+}
+
+// What the agent should try to buy again, and with which pass.
+export async function retryInput(token: string) {
+  const order = await loadOrder(token);
+  if (!order.agentKeyId) throw new ApprovalError(409, "no_agent", "No agent placed this order.");
+  return { keyId: order.agentKeyId, passId: order.passId, productId: order.productId, size: order.size, quantity: order.quantity };
 }
 
 export async function declineApproval(token: string) {

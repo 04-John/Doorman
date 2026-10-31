@@ -43,6 +43,15 @@ export const customers = pgTable("customers", {
   createdAt: createdAt(),
 });
 
+// Logged-in browser sessions. Only a hash of the cookie value is stored, and they
+// live in the database so a server restart doesn't log everyone out.
+export const sessions = pgTable("sessions", {
+  idHash: text("id_hash").primaryKey(),
+  payerId: text("payer_id").notNull().references(() => customers.payerId),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: createdAt(),
+});
+
 // A customer's permission for one agent to shop here, with a cap and expiry.
 // Only a hash of the token is stored; the agent holds the token itself.
 export const passes = pgTable("passes", {
@@ -75,8 +84,10 @@ export const orders = pgTable("orders", {
   approvalToken: text("approval_token").notNull().unique(),
   dropId: uuid("drop_id").references(() => drops.id),
   productId: text("product_id").notNull().references(() => products.id),
+  size: text("size"),
   quantity: integer("quantity").notNull(),
   amountCents: integer("amount_cents").notNull(),
+  // Empty for people buying in the browser.
   agentKeyId: text("agent_key_id").references(() => agents.keyId),
   passId: uuid("pass_id").references(() => passes.id),
   // Who should pay: the pass holder. Empty for step-up orders until the customer logs in.

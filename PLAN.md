@@ -34,8 +34,16 @@
     - **Designs exported** (`doorman/design/`; the file names were shifted on export, so contents ≠ names).
     - **All 7 screens built** from them and screenshot-checked.
     - **Fixed:** the live feed could crash the server when a browser tab closed mid-update; a server that can't bind its port now exits so the watcher restarts it.
+    - **Fixed:** the dev server never started under `npm run dev` (`tsx watch` hangs under `concurrently` on Windows); it now uses Node's own watch mode.
+    - **Your review, round 1:**
+      - Every page now has a demo bar linking all screens. Add `?clean=1` to a URL to hide it for recording.
+      - Storefront: Add to cart opens a real cart paid with PayPal, with the drop's one-per-customer rule checked against the paying account. "Let my AI assistant buy it" becomes "Ask Ava to buy it" once you've linked an agent: Ava checks out through Doorman with your pass, and you land on the approval page.
+      - Link flow now matches the design: Choose your agent (Ava, Juniper, Milo, or paste a key), then limits, then pass created. My passes moved to `/passes`.
+      - Approve: shows the size, has "Try again" after a released hold, and approval links expire after 15 minutes as the page says.
+      - Logins are kept in the database, so a server restart (or Render waking up) no longer logs people out.
 - **Next step:**
-  - You: restart `npm run dev` and click through the new screens, starting at http://127.0.0.1:5173/. Create a Render account (sign in with GitHub).
+  - You: log in with PayPal once more (old logins were in memory), then test the store → link → buy → approve path, and the cart checkout with a sandbox buyer.
+  - You: create a Render account (sign in with GitHub).
   - Claude: deploy to Render, add webhooks, README.
 - **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.

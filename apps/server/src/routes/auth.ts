@@ -58,7 +58,7 @@ export const authRoutes = new Hono()
           target: schema.customers.payerId,
           set: { name: profile.name, email: profile.email, verified: profile.verifiedAccount },
         });
-      startSession(c, profile.payerId);
+      await startSession(c, profile.payerId);
       return c.redirect(withQuery(next, "login=ok"));
     } catch (err) {
       console.error("[doorman] Log in with PayPal failed:", err);
@@ -68,7 +68,7 @@ export const authRoutes = new Hono()
     }
   })
 
-  .post("/auth/logout", (c) => {
-    endSession(c);
+  .post("/auth/logout", async (c) => {
+    await endSession(c);
     return c.json({ ok: true });
   });

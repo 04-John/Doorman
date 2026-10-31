@@ -1,11 +1,13 @@
-// Screen 6: the Static Supply storefront. Shows the drop with live stock and invites
-// customers to link their AI assistant. People can't check out here in this demo.
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
-import { api, type StoreInfo } from "../lib/api";
+// Screen 6: the Static Supply storefront. Shows the drop with live stock. People can
+// buy in the browser with PayPal, or have their linked AI assistant buy for them.
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { api, type Pass, type StoreInfo } from "../lib/api";
 import { money } from "../lib/format";
 import { Skeleton } from "../ui/bits";
+import { AgentAvatar } from "../ui/status";
 import { useToast } from "../ui/toast";
+import { CartDrawer, useCart } from "./store/Cart";
 import "./store/store.css";
 
 type Product = StoreInfo["products"][number];
@@ -21,12 +23,40 @@ const AGENT_STEPS = [
 // Striped stand-in for product photography.
 const stripes = (step: number) => `repeating-linear-gradient(135deg,#ECEAE4 0 ${step}px,#F4F3EF ${step}px ${step * 2}px)`;
 
+// The customer's most recent live pass, if they've linked an assistant.
+function useLinkedAgent() {
+  const [pass, setPass] = useState<Pass | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .me()
+      .then((customer) => (customer ? api.passes() : []))
+      .then(
+        (passes) => {
+          const live = passes.filter((p) => !p.revokedAt && new Date(p.expiresAt) > new Date());
+          if (!cancelled) setPass(live[0] ?? null);
+        },
+        () => {},
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return pass;
+}
+
 export default function Storefront() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [size, setSize] = useState<(typeof SIZES)[number]>("M");
+  const [cart, setCart] = useCart();
+  const [cartOpen, setCartOpen] = useState(false);
+  const linked = useLinkedAgent();
+  const [asking, setAsking] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +94,41 @@ export default function Storefront() {
   }, [live]);
 
   const hero = store ? (store.products.find((p) => p.limitedDrop) ?? store.products[0]) : undefined;
+  const dropLimit = live ? (store?.perCustomerLimit ?? null) : null;
+  const cartCount = cart.reduce((n, i) => n + i.quantity, 0);
+
+  function addToCart(product: Product, chosenSize: string | null) {
+    const dropUnits = cart.filter((i) => i.limitedDrop).reduce((n, i) => n + i.quantity, 0);
+    if (product.limitedDrop && dropLimit != null && dropUnits >= dropLimit) {
+      toast(`The drop is limited to ${dropLimit} per customer. It's already in your cart.`);
+      setCartOpen(true);
+      return;
+    }
+    setCart((items) => {
+      const same = items.findIndex((i) => i.productId === product.id && i.size === chosenSize);
+      if (same >= 0) return items.map((i, n) => (n === same ? { ...i, quantity: i.quantity + 1 } : i));
+      return [...items, { productId: product.id, size: chosenSize, quantity: 1, name: product.name, priceCents: product.priceCents, limitedDrop: product.limitedDrop }];
+    });
+    setCartOpen(true);
+  }
+
+  // The linked assistant checks out through Doorman; the customer lands on the approval page.
+  async function askAgent(product: Product) {
+    setAsking(true);
+    setRefusal(null);
+    try {
+      const { approvalPath } = await api.agentCheckout(product.id, size);
+      navigate(approvalPath);
+    } catch (err) {
+      setRefusal(err instanceof Error ? err.message : "Your assistant couldn't check out.");
+      setAsking(false);
+    }
+  }
+
+  const refresh = useCallback(() => {
+    api.store().then(setStore, () => {});
+  }, []);
+  const closeCart = useCallback(() => setCartOpen(false), []);
 
   return (
     <div className="sf-page">
@@ -102,13 +167,18 @@ export default function Storefront() {
             </a>
           ))}
         </nav>
-        <button
-          type="button"
-          onClick={() => toast("This demo store sells through AI agents. Link your assistant below.")}
-          style={{ marginLeft: "auto", border: 0, background: "transparent", fontSize: 15, fontWeight: 500, color: "#15171C", padding: "6px 0" }}
-        >
-          Cart (0)
-        </button>
+        <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
+          <Link to="/passes" style={{ fontSize: 15, fontWeight: 500, color: "#4A4D55" }}>
+            Agent passes
+          </Link>
+          <button
+            type="button"
+            onClick={() => setCartOpen(true)}
+            style={{ border: 0, background: "transparent", fontSize: 15, fontWeight: 600, color: "#15171C", padding: "6px 0" }}
+          >
+            Cart ({cartCount})
+          </button>
+        </span>
       </header>
 
       {failed && !store ? (
@@ -183,20 +253,44 @@ export default function Storefront() {
               )}
 
               <div className="sf-actions">
-                <button type="button" className="sf-btn sf-btn-primary" onClick={() => toast("This demo store sells through AI agents. Link your assistant below.")}>
-                  Add to cart
+                <button type="button" className="sf-btn sf-btn-primary" disabled={!hero || hero.stock === 0} onClick={() => hero && addToCart(hero, size)}>
+                  {hero?.stock === 0 ? "Sold out" : "Add to cart"}
                 </button>
-                <Link to="/link" className="sf-btn sf-btn-secondary">
-                  Let my AI assistant buy it
-                </Link>
+                {linked ? (
+                  <button type="button" className="sf-btn sf-btn-secondary" disabled={!hero || asking} onClick={() => hero && void askAgent(hero)}>
+                    {asking ? `${linked.agentName} is checking out…` : `Ask ${linked.agentName} to buy it`}
+                  </button>
+                ) : (
+                  <Link to="/link" className="sf-btn sf-btn-secondary">
+                    Let my AI assistant buy it
+                  </Link>
+                )}
               </div>
+              {linked && (
+                <div className="sf-linked">
+                  <AgentAvatar name={linked.agentName} size={22} />
+                  <span>
+                    <b style={{ color: "#15171C", fontWeight: 600 }}>{linked.agentName}</b> can buy for you here, up to {money(linked.capCents)} per purchase.
+                  </span>
+                  <Link to="/passes" style={{ color: "#4A4D55", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                    Manage
+                  </Link>
+                </div>
+              )}
+              {refusal && (
+                <div role="alert" style={{ padding: "12px 14px", borderRadius: 12, background: "#FDEAE7", border: "1px solid #F2BBB4", color: "#8E1B12", fontSize: 14.5, lineHeight: 1.45, maxWidth: 460 }}>
+                  <b>Doorman stopped {linked?.agentName ?? "your assistant"}:</b> {refusal}
+                </div>
+              )}
             </div>
           </section>
 
           <section id="shop" className="sf-wrap sf-gutter" style={{ paddingBottom: 64 }}>
             <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em", textTransform: "uppercase", margin: "0 0 20px" }}>Shop</h2>
             <ul className="sf-products" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-              {store ? store.products.map((p) => <ProductCard key={p.id} product={p} />) : [0, 1, 2].map((i) => <ProductCard key={i} product={null} />)}
+              {store
+                ? store.products.map((p) => <ProductCard key={p.id} product={p} onAdd={() => addToCart(p, p.limitedDrop ? size : null)} />)
+                : [0, 1, 2].map((i) => <ProductCard key={i} product={null} />)}
             </ul>
           </section>
         </>
@@ -236,6 +330,8 @@ export default function Storefront() {
         <span>© Static Supply · sandbox demo store</span>
         <Link to="/">Back to demo hub</Link>
       </footer>
+
+      {cartOpen && <CartDrawer items={cart} setItems={setCart} dropLimit={dropLimit} onClose={closeCart} onPaid={refresh} />}
     </div>
   );
 }
@@ -275,7 +371,7 @@ function StockBar({ left, total }: { left: number; total: number }) {
   );
 }
 
-function ProductCard({ product }: { product: Product | null }) {
+function ProductCard({ product, onAdd }: { product: Product | null; onAdd?: () => void }) {
   return (
     <li style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div aria-hidden="true" style={{ aspectRatio: "1", borderRadius: 16, background: stripes(8), position: "relative" }}>
@@ -301,13 +397,18 @@ function ProductCard({ product }: { product: Product | null }) {
         )}
       </div>
       {product ? (
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 16.5, fontWeight: 600 }}>
-          <span>
-            {product.name}
-            {product.limitedDrop && <span className="sr-only"> (limited drop)</span>}
-          </span>
-          <span className="mono">{money(product.priceCents)}</span>
-        </div>
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 16.5, fontWeight: 600 }}>
+            <span>
+              {product.name}
+              {product.limitedDrop && <span className="sr-only"> (limited drop)</span>}
+            </span>
+            <span className="mono">{money(product.priceCents)}</span>
+          </div>
+          <button type="button" className="sf-add" disabled={product.stock === 0} onClick={onAdd} aria-label={`Add ${product.name} to cart`}>
+            {product.stock === 0 ? "Sold out" : "Add to cart"}
+          </button>
+        </>
       ) : (
         <div style={{ display: "flex", justifyContent: "space-between", height: 22, alignItems: "center" }}>
           <Skeleton width="55%" height={16} />

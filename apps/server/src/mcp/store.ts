@@ -9,7 +9,7 @@ import { approvalUrl, checkout } from "../doorman/checkout.js";
 import { evaluate, record, type Evaluation } from "../doorman/door.js";
 import { money } from "../doorman/engine.js";
 import type { Visitor } from "../doorman/identity.js";
-import { collectPassToken, createLinkRequest } from "../doorman/passes.js";
+import { collectPassToken, collectWaitingPasses, createLinkRequest } from "../doorman/passes.js";
 import { getProduct, searchProducts, type ProductRow } from "../doorman/store.js";
 
 export function describeVisitor(visitor: Visitor): string {
@@ -44,7 +44,7 @@ const productView = (p: ProductRow) => ({
 });
 
 // Carts live in memory for a few minutes; checkout turns one into an order.
-const carts = new Map<string, { visitorKey: string; productId: string; quantity: number; createdAt: number }>();
+const carts = new Map<string, { visitorKey: string; productId: string; size?: string; quantity: number; createdAt: number }>();
 const CART_TTL_MS = 15 * 60_000;
 
 export function buildStoreServer(visitor: Visitor): McpServer {
@@ -73,17 +73,18 @@ export function buildStoreServer(visitor: Visitor): McpServer {
       inputSchema: {
         productId: z.string().describe("Product ID from search_products"),
         quantity: z.number().int().min(1).max(50).default(1),
+        size: z.enum(["S", "M", "L", "XL"]).optional().describe("Size, for clothing"),
       },
     },
-    async ({ productId, quantity }) => {
+    async ({ productId, quantity, size }) => {
       const product = await getProduct(productId);
       if (!product) return reply({ error: "No product with that ID" }, true);
       const evaluation = await evaluate(visitor, "cart", { product, quantity });
       await record(visitor, "cart", evaluation, { amountCents: product.priceCents * quantity, productId });
       if (evaluation.result.decision !== "allowed") return refused(evaluation);
       const cartId = randomUUID();
-      carts.set(cartId, { visitorKey: visitor.visitorKey, productId, quantity, createdAt: Date.now() });
-      return reply({ cartId, item: productView(product), quantity, total: money(product.priceCents * quantity) });
+      carts.set(cartId, { visitorKey: visitor.visitorKey, productId, size, quantity, createdAt: Date.now() });
+      return reply({ cartId, item: productView(product), ...(size ? { size } : {}), quantity, total: money(product.priceCents * quantity) });
     },
   );
 
@@ -101,7 +102,7 @@ export function buildStoreServer(visitor: Visitor): McpServer {
         return reply({ error: "Cart not found or expired" }, true);
       }
       const product = (await getProduct(cart.productId))!;
-      const { evaluation, order } = await checkout(visitor, product, cart.quantity);
+      const { evaluation, order } = await checkout(visitor, product, cart.quantity, cart.size);
       if (!order) return refused(evaluation);
       carts.delete(cartId);
       return reply({
@@ -150,12 +151,12 @@ export function buildStoreServer(visitor: Visitor): McpServer {
     {
       title: "Collect your agent pass",
       description:
-        "After your customer approves a link request, collect the pass token. Send it in the Doorman-Pass header on later requests.",
-      inputSchema: { requestId: z.string().uuid() },
+        "Collect your pass token once your customer approves. Send it in the Doorman-Pass header on later requests. Leave out requestId to collect every pass waiting for you, including ones customers gave you from the store.",
+      inputSchema: { requestId: z.string().uuid().optional().describe("Link request ID from request_customer_link") },
     },
     async ({ requestId }) => {
       if (!visitor.agent) return reply({ error: "Only signed agents can collect a pass" }, true);
-      return reply(await collectPassToken(requestId, visitor.agent.keyId));
+      return reply(requestId ? await collectPassToken(requestId, visitor.agent.keyId) : await collectWaitingPasses(visitor.agent.keyId));
     },
   );
 

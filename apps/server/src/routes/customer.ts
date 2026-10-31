@@ -1,16 +1,21 @@
 // Customer-facing API: who am I, link an agent, my passes, approve a purchase.
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import { db, schema } from "../db/client.js";
 import { ApprovalError, approvalView, authorizeApproval, declineApproval } from "../doorman/approvals.js";
-import { approveLinkRequest, linkRequestView, passesFor, revokePass } from "../doorman/passes.js";
+import { approveLinkRequest, grantPass, linkRequestView, passesFor, revokePass } from "../doorman/passes.js";
 import { currentCustomer } from "../doorman/sessions.js";
 import { currentDrop, getRules, searchProducts } from "../doorman/store.js";
 import { env } from "../env.js";
+import { DEMO_AGENTS, demoKeyId } from "../sim/demo-agents.js";
 
 const linkApproval = z.object({
   capCents: z.number().int().min(100).max(1_000_000),
   days: z.union([z.literal(1), z.literal(7), z.literal(30)]),
 });
+
+const agentView = (a: typeof schema.agents.$inferSelect) => ({ keyId: a.keyId, name: a.name, operator: a.operator });
 
 export const customerRoutes = new Hono()
   .get("/api/config", (c) => c.json({ paypalClientId: env.PAYPAL_CLIENT_ID }))
@@ -49,6 +54,34 @@ export const customerRoutes = new Hono()
     if (!body.success) return c.json({ error: "invalid_limits", issues: body.error.issues }, 400);
     const pass = await approveLinkRequest(c.req.param("id"), customer, body.data.capCents, body.data.days);
     return pass ? c.json({ pass }) : c.json({ error: "request_not_pending" }, 409);
+  })
+
+  // Agents a customer can pick when linking one from the store.
+  .get("/api/agents", async (c) => {
+    const agents = await db.select().from(schema.agents).where(eq(schema.agents.blocked, false));
+    const listed = DEMO_AGENTS.filter((d) => d.listed).map((d) => demoKeyId(d.name));
+    const shown = agents.filter((a) => listed.includes(a.keyId)).sort((a, b) => listed.indexOf(a.keyId) - listed.indexOf(b.keyId));
+    return c.json({ agents: shown.map(agentView) });
+  })
+
+  // "Paste your agent's key": any registered agent, by its key ID.
+  .get("/api/agents/:keyId", async (c) => {
+    const [agent] = await db.select().from(schema.agents).where(eq(schema.agents.keyId, c.req.param("keyId").trim()));
+    if (!agent) return c.json({ error: "not_found", message: "Doorman doesn't know that key. Ask your agent to register with the store first." }, 404);
+    if (agent.blocked) return c.json({ error: "blocked", message: `Static Supply has blocked ${agent.name}.` }, 409);
+    return c.json(agentView(agent));
+  })
+
+  // The customer chose the agent themselves; it collects the pass next time it visits.
+  .post("/api/passes", async (c) => {
+    const customer = await currentCustomer(c);
+    if (!customer) return c.json({ error: "login_required" }, 401);
+    const body = linkApproval.extend({ agentKeyId: z.string().min(1) }).safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: "invalid_limits", issues: body.error.issues }, 400);
+    const [agent] = await db.select().from(schema.agents).where(eq(schema.agents.keyId, body.data.agentKeyId));
+    if (!agent || agent.blocked) return c.json({ error: "unknown_agent", message: "That agent can't be linked." }, 404);
+    const pass = await grantPass(agent.keyId, customer, body.data.capCents, body.data.days);
+    return c.json({ pass: (await passesFor(customer)).find((p) => p.id === pass.id) });
   })
 
   .get("/api/passes", async (c) => {

@@ -1,12 +1,15 @@
 // Screen 3: the customer approves (or declines) what their agent wants to buy.
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { api, ApiError, loginHref, type Approval, type Customer } from "../lib/api";
 import { expiresIn, money } from "../lib/format";
-import { loadPayPal } from "../lib/paypal";
 import { Skeleton } from "../ui/bits";
 import { BigButton, KeyValues, MobileShell, PayPalLoginButton, TickLine } from "../ui/mobile";
+import { PayPalButton } from "../ui/PayPalButton";
 import { AgentAvatar, ICON, Icon, IdentityBadge } from "../ui/status";
+
+// "Size M · Qty 1"
+const itemLine = (a: Approval) => [a.size && `Size ${a.size}`, `Qty ${a.quantity}`].filter(Boolean).join(" · ");
 
 function Loading({ agent }: { agent?: string }) {
   return (
@@ -38,7 +41,7 @@ function ProductCard({ a }: { a: Approval }) {
       <div style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <div style={{ fontSize: 17, fontWeight: 600 }}>{a.product.name}</div>
-          <div style={{ fontSize: 14, color: "#4A4D55", marginTop: 2 }}>Qty {a.quantity}</div>
+          <div style={{ fontSize: 14, color: "#4A4D55", marginTop: 2 }}>{itemLine(a)}</div>
         </div>
         <div className="mono" style={{ fontSize: 19, fontWeight: 600 }}>
           {money(a.amountCents, { decimals: true })}
@@ -48,45 +51,7 @@ function ProductCard({ a }: { a: Approval }) {
   );
 }
 
-// The PayPal button (JS SDK v6) for an order Doorman already created.
-function PayButton({ orderId, onApproved, onMessage }: { orderId: string; onApproved: () => void; onMessage: (m: string) => void }) {
-  const button = useRef<HTMLElement>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    let detach = () => {};
-    loadPayPal()
-      .then(async (sdk) => {
-        const methods = await sdk.findEligibleMethods({ currencyCode: "USD" });
-        if (cancelled) return;
-        if (!methods.isEligible("paypal")) return onMessage("PayPal isn't available in this browser.");
-        const session = sdk.createPayPalOneTimePaymentSession({
-          onApprove: async () => onApproved(),
-          onCancel: () => onMessage("You closed PayPal. Nothing was charged."),
-          onError: () => onMessage("PayPal had a problem. Try again."),
-        });
-        const start = () => void session.start({ presentationMode: "auto" }, Promise.resolve({ orderId }));
-        button.current?.addEventListener("click", start);
-        detach = () => button.current?.removeEventListener("click", start);
-        setReady(true);
-      })
-      .catch((err: unknown) => onMessage(err instanceof Error ? err.message : "Couldn't load PayPal."));
-    return () => {
-      cancelled = true;
-      detach();
-    };
-  }, [orderId, onApproved, onMessage]);
-
-  return (
-    <div style={{ width: "100%", minHeight: 50, display: "grid" }}>
-      {!ready && <Skeleton width="100%" height={50} radius={25} />}
-      <paypal-button ref={button} type="pay" hidden={!ready} />
-    </div>
-  );
-}
-
-function Held({ agent }: { agent: string | null }) {
+function Held({ agent, amountCents }: { agent: string | null; amountCents: number }) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 14, paddingBottom: 60 }} aria-live="polite">
       <span className="spinner" style={{ width: 72, height: 72, borderWidth: 4, borderColor: "#EEEDE8", borderTopColor: "#15171C", animationDuration: "1s" }} />
@@ -97,7 +62,7 @@ function Held({ agent }: { agent: string | null }) {
           <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#E4F4EA", display: "grid", placeItems: "center" }}>
             <Icon d={ICON.check} color="#0F6B3E" size={12} width={2.6} />
           </span>
-          Approved in PayPal
+          {money(amountCents, { decimals: true })} held on your PayPal
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 11, minHeight: 46, fontSize: 15, borderTop: "1px solid #EEEDE8" }}>
           <span className="spinner" style={{ width: 22, height: 22, borderWidth: 2.5, borderColor: "#EEEDE8", borderTopColor: "#8A5300" }} />
@@ -112,8 +77,16 @@ function Held({ agent }: { agent: string | null }) {
   );
 }
 
-function Outcome({ a }: { a: Approval }) {
+const linkButton = { border: 0, background: "transparent", fontSize: 15, fontWeight: 500, color: "#4A4D55", padding: 6, textDecoration: "underline", textUnderlineOffset: 3 } as const;
+
+function Outcome({ a, onRetry, retrying }: { a: Approval; onRetry: () => void; retrying: boolean }) {
   const agent = a.agent?.name ?? "your agent";
+  const review = a.agent ? `Review ${a.agent.name}'s pass` : "Review your passes";
+  const retry = a.canRetry && (
+    <BigButton onClick={onRetry} disabled={retrying}>
+      {retrying ? `Asking ${agent}…` : "Try again"}
+    </BigButton>
+  );
   if (a.status === "charged") {
     return (
       <>
@@ -145,7 +118,7 @@ function Outcome({ a }: { a: Approval }) {
           </div>
         )}
         <div style={{ marginTop: "auto" }}>
-          <BigButton href="/link" variant="secondary">
+          <BigButton href="/passes" variant="secondary">
             Manage your agent passes
           </BigButton>
         </div>
@@ -177,43 +150,56 @@ function Outcome({ a }: { a: Approval }) {
         />
         {mismatch && <div style={{ fontSize: 14.5, lineHeight: 1.5, color: "#4A4D55" }}>If this was you, ask {agent} to try again and approve with the PayPal account you linked.</div>}
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-          <BigButton href="/link" variant="secondary">
-            Review {agent === "your agent" ? "your passes" : `${agent}'s pass`}
+          {retry}
+          <BigButton href="/passes" variant="plain">
+            <span style={{ textDecoration: "underline", textUnderlineOffset: 3 }}>{review}</span>
           </BigButton>
         </div>
       </>
     );
   }
 
-  // Declined (or cancelled by the store).
+  // Declined, expired, or cancelled by the store.
+  const expired = a.releaseReason === "Approval link expired";
   return (
     <>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 12, paddingBottom: 80 }}>
         <div style={{ width: 76, height: 76, borderRadius: "50%", background: "#F1F0EC", display: "grid", placeItems: "center" }}>
           <Icon d={ICON.cross} color="#4A4D55" size={30} width={1.8} />
         </div>
-        <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.015em", margin: 0 }}>Cancelled. Nothing was charged.</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.015em", margin: 0, textWrap: "balance" }}>Cancelled. Nothing was charged.</h1>
         <div style={{ fontSize: 16, lineHeight: 1.5, color: "#4A4D55", maxWidth: 300 }}>
-          {a.releaseReason === "Cancelled by the merchant" ? "The store cancelled this order." : `${agent === "your agent" ? "Your agent" : agent} will see that you declined.`}
+          {a.releaseReason === "Cancelled by the merchant"
+            ? "The store cancelled this order."
+            : expired
+              ? `This approval link expired after 15 minutes. Ask ${agent} to try again.`
+              : `We told ${agent} you declined. Approval links also expire after 15 minutes.`}
         </div>
       </div>
-      <BigButton href="/link" variant="secondary">
-        Review your passes
-      </BigButton>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {expired && retry}
+        <BigButton href="/passes" variant="secondary">
+          {review}
+        </BigButton>
+      </div>
     </>
   );
 }
 
 export default function Approve() {
   const { token = "" } = useParams();
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   const [approval, setApproval] = useState<Approval | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(params.get("login") === "failed" ? "PayPal login didn't complete. Try again." : null);
   const [holding, setHolding] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
+    setApproval(null);
+    setError(null);
     Promise.all([api.approval(token), api.me()])
       .then(([a, c]) => {
         setApproval(a);
@@ -236,6 +222,22 @@ export default function Approve() {
 
   const decline = async () => setApproval(await api.declineApproval(token));
 
+  // The agent asks again; the customer gets a fresh approval page.
+  async function retry() {
+    setRetrying(true);
+    setMessage(null);
+    try {
+      const { approvalPath } = await api.retryApproval(token);
+      navigate(approvalPath);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Couldn't ask the agent to try again.");
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  const pay = useCallback(() => Promise.resolve(approval?.paypalOrderId ?? ""), [approval?.paypalOrderId]);
+
   const a = approval;
   const agent = a?.agent;
 
@@ -246,9 +248,16 @@ export default function Approve() {
       ) : !a ? (
         <Loading />
       ) : holding ? (
-        <Held agent={agent?.name ?? null} />
+        <Held agent={agent?.name ?? null} amountCents={a.amountCents} />
       ) : a.status !== "awaiting_approval" ? (
-        <Outcome a={a} />
+        <>
+          <Outcome a={a} onRetry={() => void retry()} retrying={retrying} />
+          {message && (
+            <div role="alert" style={{ fontSize: 14.5, color: "#8E1B12", textAlign: "center" }}>
+              {message}
+            </div>
+          )}
+        </>
       ) : a.stepUp ? (
         <>
           <div style={{ display: "flex", gap: 12, padding: 14, borderRadius: 14, background: "#FDF1DC", border: "1px solid #EBC98C" }}>
@@ -271,7 +280,7 @@ export default function Approve() {
             <div aria-hidden="true" style={{ width: 52, height: 52, borderRadius: 10, background: "repeating-linear-gradient(135deg,#ECEAE4 0 6px,#F4F3EF 6px 12px)" }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 15.5, fontWeight: 600 }}>{a.product.name}</div>
-              <div style={{ fontSize: 13.5, color: "#4A4D55" }}>Qty {a.quantity}</div>
+              <div style={{ fontSize: 13.5, color: "#4A4D55" }}>{itemLine(a)}</div>
             </div>
             <div className="mono" style={{ fontSize: 16, fontWeight: 600 }}>
               {money(a.amountCents, { decimals: true })}
@@ -301,7 +310,7 @@ export default function Approve() {
                 <div style={{ fontSize: 16, fontWeight: 600, marginTop: 3, color: customer ? "#15171C" : "#6B6E76" }}>Approve the payment</div>
                 <div style={{ marginTop: 12 }}>
                   {customer ? (
-                    <PayButton orderId={a.paypalOrderId} onApproved={onApproved} onMessage={setMessage} />
+                    <PayPalButton order={pay} onApproved={onApproved} onMessage={setMessage} />
                   ) : (
                     <div style={{ height: 48, borderRadius: 24, background: "#F1F0EC", border: "1.5px dashed #C9C6BD", display: "grid", placeItems: "center", fontSize: 13.5, fontWeight: 600, color: "#6B6E76" }}>Unlocks after step 1</div>
                   )}
@@ -314,7 +323,7 @@ export default function Approve() {
               {message}
             </div>
           )}
-          <button type="button" onClick={decline} style={{ marginTop: "auto", alignSelf: "center", border: 0, background: "transparent", fontSize: 15, fontWeight: 500, color: "#4A4D55", padding: 6 }}>
+          <button type="button" onClick={decline} style={{ ...linkButton, marginTop: "auto", alignSelf: "center" }}>
             This isn't me / Decline
           </button>
         </>
@@ -340,8 +349,8 @@ export default function Approve() {
             </div>
           )}
           <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-            <PayButton orderId={a.paypalOrderId} onApproved={onApproved} onMessage={setMessage} />
-            <button type="button" onClick={decline} style={{ border: 0, background: "transparent", fontSize: 15, fontWeight: 500, color: "#4A4D55", padding: 6 }}>
+            <PayPalButton order={pay} onApproved={onApproved} onMessage={setMessage} />
+            <button type="button" onClick={decline} style={linkButton}>
               This isn't me / Decline
             </button>
           </div>

@@ -21,6 +21,7 @@ export async function checkout(
   visitor: Visitor,
   product: ProductRow,
   quantity: number,
+  size?: string,
 ): Promise<{ evaluation: Evaluation; order?: OrderRow }> {
   const evaluation = await evaluate(visitor, "checkout", { product, quantity });
   const { result, drop } = evaluation;
@@ -45,6 +46,7 @@ export async function checkout(
       approvalToken,
       dropId: product.limitedDrop && drop?.status === "live" ? drop.id : null,
       productId: product.id,
+      size: size ?? null,
       quantity,
       amountCents,
       agentKeyId: visitor.agent?.keyId ?? null,

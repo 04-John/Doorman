@@ -12,6 +12,8 @@ import { customerRoutes } from "./routes/customer.js";
 import { labRoutes } from "./routes/lab.js";
 import { mcpRoutes } from "./routes/mcp.js";
 import { merchantRoutes } from "./routes/merchant.js";
+import { shopRoutes } from "./routes/shop.js";
+import { ensureDemoAgents } from "./sim/demo-agents.js";
 
 const app = new Hono();
 
@@ -20,6 +22,7 @@ app.route("/", authRoutes);
 app.route("/", agentRoutes);
 app.route("/", mcpRoutes);
 app.route("/", customerRoutes);
+app.route("/", shopRoutes);
 app.route("/", merchantRoutes);
 app.route("/", labRoutes);
 
@@ -44,6 +47,9 @@ app.onError((err, c) => {
 
 // A stray rejected promise (say, writing to a browser that just left) shouldn't end a live demo.
 process.on("unhandledRejection", (reason) => console.error("[doorman] unhandled rejection:", reason));
+
+// So customers can link the demo agents before anyone runs a drop.
+ensureDemoAgents().catch((err) => console.error("[doorman] couldn't register the demo agents:", err));
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`Doorman server running at http://localhost:${port}`);

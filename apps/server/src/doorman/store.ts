@@ -57,6 +57,14 @@ export async function reserveStock(productId: string, quantity: number): Promise
   return row ? row.stock : null;
 }
 
+// Puts stock back when a multi-item order fails partway through.
+export async function returnStock(productId: string, quantity: number) {
+  await db
+    .update(schema.products)
+    .set({ stock: sql`${schema.products.stock} + ${quantity}` })
+    .where(eq(schema.products.id, productId));
+}
+
 // Units of a drop product a customer already has in play during this drop.
 export async function unitsInDrop(input: {
   dropId: string;

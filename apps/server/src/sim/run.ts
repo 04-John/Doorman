@@ -1,16 +1,17 @@
 // "Run the drop": opens a fresh 50-hoodie drop and sends real agents at the
 // store through the same MCP door and PayPal sandbox everyone else uses.
 // The only thing it can't do is approve payments; that's the customer's job.
-import { and, desc, eq, isNull } from "drizzle-orm";
-import { registerAgent, setAgentBlocked } from "../agents/registry.js";
+import { desc, eq } from "drizzle-orm";
+import { setAgentBlocked } from "../agents/registry.js";
 import { db, schema } from "../db/client.js";
-import { issuePass } from "../doorman/passes.js";
+import { activePass, issuePass } from "../doorman/passes.js";
 import type { CustomerRow } from "../doorman/sessions.js";
 import { DROP_PRODUCT_ID, startDrop, type DropRow } from "../doorman/store.js";
 import { env } from "../env.js";
 import { aiEnabled } from "../ai/model.js";
-import { demoKey, StoreAgent } from "./agent-client.js";
+import { StoreAgent } from "./agent-client.js";
 import { runAva, type TranscriptEntry } from "./ava-ai.js";
+import { demoKeyId, demoStoreAgent, ensureDemoAgents, preparePass, rememberPassToken, type DemoAgentName } from "./demo-agents.js";
 
 let running = false;
 export const simulationRunning = () => running;
@@ -22,11 +23,9 @@ export const avaTranscript = () => transcript;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const log = (msg: string) => console.log(`[sim] ${msg}`);
 
-async function demoAgent(name: string, operator: string) {
-  const key = demoKey(name, env.PAYPAL_CLIENT_SECRET);
-  await registerAgent({ name, operator, publicKey: key.publicJwk });
-  await setAgentBlocked(key.keyId, false); // a fresh run forgets earlier manual blocks
-  return new StoreAgent(`http://127.0.0.1:${env.PORT}`, name, key);
+async function demoAgent(name: DemoAgentName) {
+  await setAgentBlocked(demoKeyId(name), false); // a fresh run forgets earlier manual blocks
+  return demoStoreAgent(name);
 }
 
 // The customer Ava shops for: the configured demo buyer, else whoever logged in most recently.
@@ -44,14 +43,16 @@ async function demoBuyer(): Promise<CustomerRow | null> {
   return latest ?? null;
 }
 
-// Simulates the customer having linked this agent earlier.
-async function givePass(agent: StoreAgent, agentName: string, buyer: CustomerRow, capCents: number, revoked = false) {
-  const keyId = demoKey(agentName, env.PAYPAL_CLIENT_SECRET).keyId;
-  await db
-    .update(schema.passes)
-    .set({ revokedAt: new Date() })
-    .where(and(eq(schema.passes.agentKeyId, keyId), eq(schema.passes.customerPayerId, buyer.payerId), isNull(schema.passes.revokedAt)));
+// The agent uses the pass its customer gave it, if it has one. Otherwise the demo
+// simulates the customer having linked it earlier.
+async function givePass(agent: StoreAgent, agentName: DemoAgentName, buyer: CustomerRow, capCents: number, revoked = false) {
+  const keyId = demoKeyId(agentName);
+  if (!revoked) {
+    const existing = await activePass(keyId, buyer.payerId);
+    if (await preparePass(agent, existing?.id ?? null)) return;
+  }
   const { pass, token } = await issuePass({ agentKeyId: keyId, customer: buyer, capCents, days: 7 });
+  rememberPassToken(pass.id, token);
   if (revoked) await db.update(schema.passes).set({ revokedAt: new Date() }).where(eq(schema.passes.id, pass.id));
   agent.passToken = token;
 }
@@ -64,9 +65,10 @@ async function swarm(size: number, ipFor: (i: number) => string, step: (bot: Sto
 }
 
 async function script() {
-  const ava = await demoAgent("Ava", "Demo Assistant Co.");
-  const kestrel = await demoAgent("Kestrel", "Northwind Labs");
-  const juniper = await demoAgent("Juniper", "Brightline AI");
+  await ensureDemoAgents();
+  const ava = await demoAgent("Ava");
+  const kestrel = await demoAgent("Kestrel");
+  const juniper = await demoAgent("Juniper");
 
   const buyer = await demoBuyer();
   if (buyer) {

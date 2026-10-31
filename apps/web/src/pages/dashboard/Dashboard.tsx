@@ -238,7 +238,7 @@ export default function Dashboard() {
     ) : null;
 
   return (
-    <div data-screen-label="1 Dashboard" style={{ height: "100vh", minWidth: 1360, display: "flex", flexDirection: "column", background: "#F4F3EF", overflow: "hidden" }}>
+    <div data-screen-label="1 Dashboard" style={{ height: "calc(100vh - var(--demo-nav-h, 0px))", minWidth: 1360, display: "flex", flexDirection: "column", background: "#F4F3EF", overflow: "hidden" }}>
       <MerchantTopBar />
       <DropStrip summary={summary} phase={phase} perCustomer={perCustomer} now={now} rps={rps} running={running} onRun={run} onReset={reset} />
 

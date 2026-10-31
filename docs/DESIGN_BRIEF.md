@@ -192,11 +192,11 @@ Design them in this priority order: the first four matter most.
 
 **Purpose:** a customer gives their AI assistant permission to shop at this store, with limits.
 
-**How it starts:** the customer's agent asks to be linked and sends them a link (like "Connect your account" in other apps). The customer opens it, so the agent is already known when the page loads.
+**How it starts:** two ways in. From the storefront ("Let my AI assistant buy it"), the customer picks their agent. Or the customer's agent asks to be linked and sends them a link (like "Connect your account" in other apps), so the agent is already known when the page loads.
 
 **Link flow, 3 steps on one page or a short stepper**
 1. **Log in with PayPal**: use PayPal's official button style, leave a placeholder. After login show "Logged in as John Doe · Verified PayPal account ✓".
-2. **Confirm your agent:** a card saying "**Ava** (Demo Assistant Co.) is asking to shop for you at Static Supply", with the agent's name, operator and an icon. This is a confirmation, not a picker.
+2. **Choose your agent:** radio cards for the agents listed with Doorman (Ava, Juniper, Milo), plus "Paste your agent's key" for any other registered agent. When the agent sent the link, this step is a single "Confirm your agent" card instead.
 3. **Set limits:**
    - Spending cap per purchase: $50 / $150 / $300 / custom
    - Expires: 24 hours / 7 days / 30 days

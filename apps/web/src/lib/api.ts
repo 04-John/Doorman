@@ -134,9 +134,11 @@ export interface Approval {
   stepUp: boolean;
   paypalOrderId: string;
   product: { id: string; name: string; priceCents: number };
+  size: string | null;
   quantity: number;
   amountCents: number;
   agent: { name: string; operator: string } | null;
+  canRetry: boolean;
   pass: { capCents: number; expiresAt: string; customerName: string | null; usedCents: number } | null;
   paidBy: string | null;
   releaseReason: string | null;
@@ -146,6 +148,33 @@ export interface LinkRequest {
   id: string;
   status: "pending" | "approved" | "expired";
   agent: { name: string; operator: string; keyId: string };
+}
+
+export interface AgentInfo {
+  keyId: string;
+  name: string;
+  operator: string;
+}
+
+// What an agent's errand came back with: an approval page, or Doorman's refusal.
+export interface Errand {
+  approvalPath: string;
+  decision: Decision;
+}
+
+export interface CartLine {
+  productId: string;
+  size: string | null;
+  quantity: number;
+}
+
+export interface WebOrder {
+  status: OrderStatus;
+  paypalOrderId: string;
+  amountCents: number;
+  items: { name: string; size: string | null; quantity: number; amountCents: number }[];
+  paidBy: string | null;
+  releaseReason: string | null;
 }
 
 export interface Pass {
@@ -218,10 +247,19 @@ export const api = {
   approval: (token: string) => request<Approval>(`/api/approvals/${token}`),
   authorizeApproval: (token: string) => request<Approval>(`/api/approvals/${token}/authorize`, { method: "POST" }),
   declineApproval: (token: string) => request<Approval>(`/api/approvals/${token}/decline`, { method: "POST" }),
+  retryApproval: (token: string) => request<Errand>(`/api/approvals/${token}/retry`, { method: "POST" }),
+
+  webCheckout: (items: CartLine[]) => request<{ paypalOrderId: string }>("/api/store/checkout", { method: "POST", body: { items } }),
+  completeWebCheckout: (paypalOrderId: string) => request<WebOrder>(`/api/store/checkout/${paypalOrderId}/complete`, { method: "POST" }),
+  agentCheckout: (productId: string, size: string | null) => request<Errand>("/api/store/agent-checkout", { method: "POST", body: { productId, size } }),
 
   linkRequest: (id: string) => request<LinkRequest>(`/api/link-requests/${id}`),
   approveLink: (id: string, capCents: number, days: 1 | 7 | 30) =>
     request<{ pass: Pass }>(`/api/link-requests/${id}/approve`, { method: "POST", body: { capCents, days } }),
+  agents: () => request<{ agents: AgentInfo[] }>("/api/agents").then((r) => r.agents),
+  agent: (keyId: string) => request<AgentInfo>(`/api/agents/${encodeURIComponent(keyId)}`),
+  createPass: (agentKeyId: string, capCents: number, days: 1 | 7 | 30) =>
+    request<{ pass: Pass }>("/api/passes", { method: "POST", body: { agentKeyId, capCents, days } }).then((r) => r.pass),
   passes: () => request<{ passes: Pass[] }>("/api/passes").then((r) => r.passes),
   revokePass: (id: string) => request(`/api/passes/${id}/revoke`, { method: "POST" }),
 };
