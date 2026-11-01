@@ -54,9 +54,10 @@
       - Keep the demo awake until Dec 15.
       - Opt into AG Grid and Render; don't claim APIMatic unless we actually use it.
 - **Next step:**
-  - You: create a Render account (sign in with GitHub).
-  - You: in the PayPal developer dashboard, create a new US **personal** sandbox account just for judges, with a password you're happy to publish.
-  - Claude: deploy to Render, add webhooks, README with testing instructions.
+  - Done Nov 1: your Render account works, and the judges' sandbox buyer exists (`sb-nizs553636398@personal.example.com`, payer ID `ZTAEZCCT64MPW`, already set in `render.yaml`).
+  - You: deploy the Blueprint on Render (New > Blueprint > the Doorman repo), paste the four secrets from `.env`, and send Claude the live URL.
+  - Then you: add `<live URL>/auth/paypal/callback` to the PayPal app's Log in with PayPal return URLs.
+  - Claude: test the live site, add webhooks, the uptime monitor, and the README with testing instructions.
 - **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
 
@@ -164,7 +165,7 @@
 - [x] Use AG Grid for the live traffic table (sponsor prize target) and update it live as agents arrive. It is themed with the design system's grid params and uses custom cells and a new-row flash.
 - [ ] Add the live URL to the PayPal app's Log in with PayPal return URLs.
 - [ ] PayPal webhooks on the live URL (order approved, payment captured, authorization voided), with signature verification.
-- [ ] Production settings: `DEMO_BUYER_PAYER_ID` = the judges' sandbox buyer, so Ava's drop orders expect the account judges log in with.
+- [x] Production settings: `DEMO_BUYER_PAYER_ID` = the judges' sandbox buyer (`ZTAEZCCT64MPW`, in `render.yaml`), so Ava's drop orders expect the account judges log in with. On Render the public URL and the login return URL come from the service's own address.
 - [ ] Keep the free Render service awake until Dec 15: a free uptime monitor pings `/health` every 10 minutes (one always-on service fits Render's free 750 hours a month).
 
 **You**

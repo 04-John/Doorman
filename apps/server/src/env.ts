@@ -9,6 +9,11 @@ import { z } from "zod";
 const envFile = new URL("../../../.env", import.meta.url);
 if (existsSync(envFile)) Object.assign(process.env, parseEnv(readFileSync(envFile, "utf8")));
 
+// On Render the service's own address is the public URL, and Log in with PayPal
+// returns to it, so neither needs typing in before the address exists.
+process.env.PUBLIC_URL ||= process.env.RENDER_EXTERNAL_URL || "http://127.0.0.1:5173";
+process.env.PAYPAL_LOGIN_RETURN_URL ||= `${process.env.PUBLIC_URL}/auth/paypal/callback`;
+
 const schema = z.object({
   PAYPAL_CLIENT_ID: z
     .string()
@@ -23,7 +28,7 @@ const schema = z.object({
   GEMINI_MODEL: z.string().default("gemini-3.5-flash"),
   GEMINI_FAST_MODEL: z.string().default("gemini-3.5-flash-lite"),
   // Where customers open approval and link pages. Locally that's the Vite app.
-  PUBLIC_URL: z.url().default("http://127.0.0.1:5173"),
+  PUBLIC_URL: z.url(),
   // Sandbox buyer the demo agent "Ava" shops for (its payer ID from Log in with PayPal).
   DEMO_BUYER_PAYER_ID: z.string().optional(),
   PORT: z.coerce.number().int().positive().default(8787),
