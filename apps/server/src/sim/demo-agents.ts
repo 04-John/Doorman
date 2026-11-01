@@ -62,7 +62,10 @@ export async function agentBuys(input: { keyId: string; passId: string | null; p
   if (!demo) return { ok: false, decision: null, reason: "Only the demo agents can shop from here. Ask your own agent directly." };
   const agent = demoStoreAgent(demo.name);
   try {
-    await preparePass(agent, input.passId);
+    // Only passes collected before tokens were kept in the database can be missing.
+    if (!(await preparePass(agent, input.passId)) && input.passId) {
+      return { ok: false, decision: null, reason: `${demo.name} no longer has this pass. Link ${demo.name} again to give a new one.` };
+    }
     const refusal = (data: Record<string, unknown>): Errand => ({
       ok: false,
       decision: typeof data.doorman === "string" ? data.doorman : null,
