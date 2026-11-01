@@ -77,6 +77,17 @@ export const linkRequests = pgTable("link_requests", {
   createdAt: createdAt(),
 });
 
+// The demo agents' wallet: pass tokens they've collected. This server runs them,
+// so it keeps their tokens, and a restart or redeploy mustn't make them forget.
+// (Outside agents hold their own tokens; Doorman only stores a hash.)
+export const demoAgentTokens = pgTable("demo_agent_tokens", {
+  passId: uuid("pass_id")
+    .primaryKey()
+    .references(() => passes.id, { onDelete: "cascade" }),
+  token: text("token").notNull(),
+  createdAt: createdAt(),
+});
+
 export type OrderStatus = "awaiting_approval" | "held" | "charged" | "released" | "declined";
 
 export const orders = pgTable("orders", {

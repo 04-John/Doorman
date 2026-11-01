@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db, schema } from "../db/client.js";
 import { ApprovalError, retryInput } from "../doorman/approvals.js";
 import { currentCustomer } from "../doorman/sessions.js";
+import { currentDrop, customerDropOrders, getProduct, getRules } from "../doorman/store.js";
 import { completeWebCheckout, startWebCheckout } from "../doorman/web-checkout.js";
 import { agentBuys, DEMO_AGENTS, demoKeyId, type Errand } from "../sim/demo-agents.js";
 
@@ -23,6 +24,17 @@ const errand = z.object({ productId: z.string().min(1), size });
 // Doorman saying no is a normal answer, so it comes back as 200 with ok: false.
 const errandReply = (result: Errand) =>
   result.ok ? { ok: true, approvalPath: result.approvalPath, decision: result.decision } : { ok: false, decision: result.decision, message: result.reason };
+
+// If the customer already has their share of the live drop, says so plainly.
+async function alreadyHasDropLimit(payerId: string, productId: string): Promise<string | null> {
+  const [drop, { policy }, product] = await Promise.all([currentDrop(), getRules(), getProduct(productId)]);
+  if (drop?.status !== "live" || drop.productId !== productId || !product) return null;
+  const { units, awaitingToken } = await customerDropOrders(drop, payerId);
+  if (units < policy.dropLimitPerCustomer) return null;
+  const limit = `It's limited to ${policy.dropLimitPerCustomer} per customer.`;
+  if (awaitingToken) return `A ${product.name} is already waiting for your approval. ${limit}`;
+  return `You already have ${units === 1 ? `a ${product.name}` : `${units} ${product.name}s`} from this drop. ${limit}`;
+}
 
 export const shopRoutes = new Hono()
   .post("/api/store/checkout", async (c) => {
@@ -53,7 +65,13 @@ export const shopRoutes = new Hono()
       .orderBy(desc(schema.passes.createdAt))
       .limit(1);
     if (!pass) return c.json({ error: "no_pass", message: "Link your AI assistant first." }, 409);
-    return c.json(errandReply(await agentBuys({ keyId: pass.agentKeyId, passId: pass.id, productId: body.data.productId, size: body.data.size, quantity: 1 })));
+    const result = await agentBuys({ keyId: pass.agentKeyId, passId: pass.id, productId: body.data.productId, size: body.data.size, quantity: 1 });
+    // Doorman's reason is written for the merchant; the customer hears it in their own terms.
+    if (!result.ok) {
+      const repeat = await alreadyHasDropLimit(customer.payerId, body.data.productId);
+      if (repeat) return c.json({ ...errandReply(result), message: repeat });
+    }
+    return c.json(errandReply(result));
   })
 
   // "Try again" after a released hold: the same agent asks for the same thing.

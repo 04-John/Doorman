@@ -7,7 +7,7 @@ import { money } from "../lib/format";
 import { preloadPayPal } from "../lib/paypal";
 import { Skeleton } from "../ui/bits";
 import { DROP_HERO, ProductPhoto } from "../ui/product";
-import { AgentAvatar } from "../ui/status";
+import { AgentAvatar, ICON, Icon } from "../ui/status";
 import { useToast } from "../ui/toast";
 import { CartDrawer, useCart } from "./store/Cart";
 import "./store/store.css";
@@ -98,9 +98,12 @@ export default function Storefront() {
 
   const hero = store ? (store.products.find((p) => p.limitedDrop) ?? store.products[0]) : undefined;
   const dropLimit = live ? (store?.perCustomerLimit ?? null) : null;
+  // The signed-in customer already has their share of the live drop.
+  const gotYours = store?.yours && dropLimit != null && store.yours.units >= dropLimit ? store.yours : null;
   const cartCount = cart.reduce((n, i) => n + i.quantity, 0);
 
   function addToCart(product: Product, chosenSize: string | null) {
+    if (product.limitedDrop && gotYours) return toast(`You already have your ${product.name} from this drop.`);
     const dropUnits = cart.filter((i) => i.limitedDrop).reduce((n, i) => n + i.quantity, 0);
     if (product.limitedDrop && dropLimit != null && dropUnits >= dropLimit) {
       toast(`The drop is limited to ${dropLimit} per customer. It's already in your cart.`);
@@ -124,6 +127,7 @@ export default function Storefront() {
       if (result.ok) return navigate(result.approvalPath);
       setRefusal(result.message);
       setAsking(false);
+      refresh(); // a refusal can mean the customer already has theirs
     } catch (err) {
       setRefusal(err instanceof Error ? err.message : "Your assistant couldn't check out.");
       setAsking(false);
@@ -248,20 +252,24 @@ export default function Storefront() {
                 <Skeleton width="100%" height={6} radius={3} style={{ maxWidth: 460 }} />
               )}
 
-              <div className="sf-actions">
-                <button type="button" className="sf-btn sf-btn-primary" disabled={!hero || hero.stock === 0} onClick={() => hero && addToCart(hero, size)}>
-                  {hero?.stock === 0 ? "Sold out" : "Add to cart"}
-                </button>
-                {linked ? (
-                  <button type="button" className="sf-btn sf-btn-secondary" disabled={!hero || asking} onClick={() => hero && void askAgent(hero)}>
-                    {asking ? `${linked.agentName} is checking out…` : `Ask ${linked.agentName} to buy it`}
+              {gotYours && hero ? (
+                <GotYours name={hero.name} limit={dropLimit!} approvalPath={gotYours.approvalPath} />
+              ) : (
+                <div className="sf-actions">
+                  <button type="button" className="sf-btn sf-btn-primary" disabled={!hero || hero.stock === 0} onClick={() => hero && addToCart(hero, size)}>
+                    {hero?.stock === 0 ? "Sold out" : "Add to cart"}
                   </button>
-                ) : (
-                  <Link to="/link" className="sf-btn sf-btn-secondary">
-                    Let my AI assistant buy it
-                  </Link>
-                )}
-              </div>
+                  {linked ? (
+                    <button type="button" className="sf-btn sf-btn-secondary" disabled={!hero || asking} onClick={() => hero && void askAgent(hero)}>
+                      {asking ? `${linked.agentName} is checking out…` : `Ask ${linked.agentName} to buy it`}
+                    </button>
+                  ) : (
+                    <Link to="/link" className="sf-btn sf-btn-secondary">
+                      Let my AI assistant buy it
+                    </Link>
+                  )}
+                </div>
+              )}
               {linked && (
                 <div className="sf-linked">
                   <AgentAvatar name={linked.agentName} size={22} />
@@ -273,7 +281,7 @@ export default function Storefront() {
                   </Link>
                 </div>
               )}
-              {refusal && (
+              {refusal && !gotYours && (
                 <div role="alert" style={{ padding: "12px 14px", borderRadius: 12, background: "#FDEAE7", border: "1px solid #F2BBB4", color: "#8E1B12", fontSize: 14.5, lineHeight: 1.45, maxWidth: 460 }}>
                   <b>Doorman stopped {linked?.agentName ?? "your assistant"}:</b> {refusal}
                 </div>
@@ -285,7 +293,9 @@ export default function Storefront() {
             <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em", textTransform: "uppercase", margin: "0 0 20px" }}>Shop</h2>
             <ul className="sf-products" style={{ listStyle: "none", margin: 0, padding: 0 }}>
               {store
-                ? store.products.map((p) => <ProductCard key={p.id} product={p} onAdd={() => addToCart(p, p.limitedDrop ? size : null)} />)
+                ? store.products.map((p) => (
+                    <ProductCard key={p.id} product={p} owned={p.limitedDrop && gotYours != null} onAdd={() => addToCart(p, p.limitedDrop ? size : null)} />
+                  ))
                 : [0, 1, 2].map((i) => <ProductCard key={i} product={null} />)}
             </ul>
           </section>
@@ -367,7 +377,44 @@ function StockBar({ left, total }: { left: number; total: number }) {
   );
 }
 
-function ProductCard({ product, onAdd }: { product: Product | null; onAdd?: () => void }) {
+// Shown instead of the buy buttons once the customer has their share of the drop.
+function GotYours({ name, limit, approvalPath }: { name: string; limit: number; approvalPath: string | null }) {
+  const waiting = approvalPath != null;
+  return (
+    <div
+      role="status"
+      style={{
+        display: "flex",
+        gap: 12,
+        alignItems: "flex-start",
+        padding: "14px 16px",
+        borderRadius: 14,
+        maxWidth: 460,
+        background: waiting ? "#FDF1DC" : "#E4F4EA",
+        border: `1px solid ${waiting ? "#EBC98C" : "#B2DCC2"}`,
+        color: waiting ? "#5C3A00" : "#0B4F2E",
+      }}
+    >
+      <span style={{ width: 24, height: 24, flex: "none", marginTop: 1, borderRadius: "50%", background: waiting ? "#8A5300" : "#0F6B3E", display: "grid", placeItems: "center" }}>
+        <Icon d={waiting ? "M8 4.5V8l2.2 1.6" : ICON.check} color="#FFFFFF" size={14} width={2} />
+      </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 15, lineHeight: 1.45 }}>
+        <b style={{ fontSize: 16.5, fontWeight: 600, color: "#15171C" }}>{waiting ? "Waiting for your approval" : "You've got yours"}</b>
+        <span>
+          {waiting ? `Your assistant has a ${name} ready for you. Nothing is charged until you approve it in PayPal.` : `Your ${name} from this drop is on its way.`} It's
+          limited to {limit} per customer.
+        </span>
+        {waiting && (
+          <Link to={approvalPath} className="sf-btn sf-btn-primary" style={{ height: 44, padding: "0 18px", marginTop: 8, alignSelf: "flex-start", fontSize: 15 }}>
+            Review and approve
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProductCard({ product, owned = false, onAdd }: { product: Product | null; owned?: boolean; onAdd?: () => void }) {
   return (
     <li style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="sf-photo" style={{ aspectRatio: "1", borderRadius: 16, position: "relative", overflow: "hidden", background: "#ECEAE4" }}>
@@ -402,8 +449,8 @@ function ProductCard({ product, onAdd }: { product: Product | null; onAdd?: () =
             </span>
             <span className="mono">{money(product.priceCents)}</span>
           </div>
-          <button type="button" className="sf-add" disabled={product.stock === 0} onClick={onAdd} aria-label={`Add ${product.name} to cart`}>
-            {product.stock === 0 ? "Sold out" : "Add to cart"}
+          <button type="button" className="sf-add" disabled={product.stock === 0 || owned} onClick={onAdd} aria-label={owned ? undefined : `Add ${product.name} to cart`}>
+            {owned ? "You've got yours" : product.stock === 0 ? "Sold out" : "Add to cart"}
           </button>
         </>
       ) : (

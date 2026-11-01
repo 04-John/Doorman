@@ -1,7 +1,9 @@
 // The demo agents. This server holds their keys, so it can act for them: in
 // "Run the drop", and when a customer asks one to buy from the store. They go
 // through the same MCP door, signatures and passes as any outside agent.
+import { eq } from "drizzle-orm";
 import { registerAgent } from "../agents/registry.js";
+import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
 import { demoKey, StoreAgent } from "./agent-client.js";
 
@@ -33,18 +35,19 @@ export function demoStoreAgent(name: DemoAgentName) {
   return new StoreAgent(`http://127.0.0.1:${env.PORT}`, name, keys.get(name)!);
 }
 
-// Pass tokens the demo agents have collected, by pass ID. A real agent keeps its
-// own; these last as long as the server process.
-const heldTokens = new Map<string, string>();
-
-export const rememberPassToken = (passId: string, token: string) => void heldTokens.set(passId, token);
+// Pass tokens the demo agents have collected. A real agent keeps its own; these
+// are kept in the database, so the agents still have them after a redeploy.
+export async function rememberPassToken(passId: string, token: string) {
+  await db.insert(schema.demoAgentTokens).values({ passId, token }).onConflictDoNothing();
+}
 
 // Picks up any passes customers gave this agent, then uses the given one if it has its token.
 export async function preparePass(agent: StoreAgent, passId: string | null): Promise<boolean> {
   const collected = await agent.call("collect_agent_pass");
   const passes = collected.ok && Array.isArray(collected.data.passes) ? (collected.data.passes as { passId: string; passToken: string }[]) : [];
-  for (const p of passes) heldTokens.set(p.passId, p.passToken);
-  agent.passToken = (passId && heldTokens.get(passId)) || null;
+  for (const p of passes) await rememberPassToken(p.passId, p.passToken);
+  const [held] = passId ? await db.select().from(schema.demoAgentTokens).where(eq(schema.demoAgentTokens.passId, passId)) : [];
+  agent.passToken = held?.token ?? null;
   return agent.passToken !== null;
 }
 

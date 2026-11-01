@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, inArray, lt, ne, sql, sum } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lt, ne, or, sql, sum } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import type { OrderStatus } from "../db/schema.js";
 import { policySchema, type Policy } from "./policy.js";
@@ -101,6 +101,27 @@ export async function unitsInDrop(input: {
       ),
     );
   return Number(row?.units ?? 0);
+}
+
+// What a signed-in customer already has in the live drop, however they bought it:
+// through an agent (expected payer) or in the browser (approved payer).
+export async function customerDropOrders(drop: DropRow, payerId: string): Promise<{ units: number; awaitingToken: string | null }> {
+  await expireStaleApprovals();
+  const rows = await db
+    .select({ quantity: schema.orders.quantity, status: schema.orders.status, approvalToken: schema.orders.approvalToken })
+    .from(schema.orders)
+    .where(
+      and(
+        eq(schema.orders.dropId, drop.id),
+        eq(schema.orders.productId, drop.productId),
+        or(eq(schema.orders.expectedPayerId, payerId), eq(schema.orders.approvedPayerId, payerId)),
+        inArray(schema.orders.status, ["awaiting_approval", "held", "charged"]),
+      ),
+    )
+    .orderBy(desc(schema.orders.createdAt));
+  // Browser checkouts have no approval page of their own.
+  const awaiting = rows.find((r) => r.status === "awaiting_approval" && !r.approvalToken.startsWith("web-"));
+  return { units: rows.reduce((n, r) => n + r.quantity, 0), awaitingToken: awaiting?.approvalToken ?? null };
 }
 
 let policyCache: { policy: Policy; rulesText: string } | undefined;

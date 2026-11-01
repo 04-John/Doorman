@@ -52,7 +52,7 @@ async function givePass(agent: StoreAgent, agentName: DemoAgentName, buyer: Cust
     if (await preparePass(agent, existing?.id ?? null)) return;
   }
   const { pass, token } = await issuePass({ agentKeyId: keyId, customer: buyer, capCents, days: 7 });
-  rememberPassToken(pass.id, token);
+  await rememberPassToken(pass.id, token);
   if (revoked) await db.update(schema.passes).set({ revokedAt: new Date() }).where(eq(schema.passes.id, pass.id));
   agent.passToken = token;
 }

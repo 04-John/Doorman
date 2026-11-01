@@ -190,6 +190,8 @@ export interface StoreInfo {
   products: { id: string; name: string; priceCents: number; stock: number; limitedDrop: boolean }[];
   drop: null | { status: "live" | "ended"; startedAt: string; stockTotal: number };
   perCustomerLimit: number;
+  // The signed-in customer's units in the live drop; approvalPath while one awaits their approval.
+  yours: null | { units: number; approvalPath: string | null };
 }
 
 export interface MerchantInfo {

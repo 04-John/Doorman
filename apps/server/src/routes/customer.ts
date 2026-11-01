@@ -6,7 +6,7 @@ import { db, schema } from "../db/client.js";
 import { ApprovalError, approvalView, authorizeApproval, declineApproval } from "../doorman/approvals.js";
 import { approveLinkRequest, grantPass, linkRequestView, passesFor, revokePass } from "../doorman/passes.js";
 import { currentCustomer } from "../doorman/sessions.js";
-import { currentDrop, getRules, searchProducts } from "../doorman/store.js";
+import { currentDrop, customerDropOrders, getRules, searchProducts } from "../doorman/store.js";
 import { env } from "../env.js";
 import { DEMO_AGENTS, demoKeyId } from "../sim/demo-agents.js";
 
@@ -20,13 +20,16 @@ const agentView = (a: typeof schema.agents.$inferSelect) => ({ keyId: a.keyId, n
 export const customerRoutes = new Hono()
   .get("/api/config", (c) => c.json({ paypalClientId: env.PAYPAL_CLIENT_ID }))
 
-  // Public storefront data: products, the drop's state, and the per-customer limit.
+  // Storefront data: products, the drop's state, the per-customer limit, and for a
+  // signed-in customer what they already have in the live drop.
   .get("/api/store", async (c) => {
-    const [products, drop, { policy }] = await Promise.all([searchProducts(), currentDrop(), getRules()]);
+    const [products, drop, { policy }, customer] = await Promise.all([searchProducts(), currentDrop(), getRules(), currentCustomer(c)]);
+    const yours = customer && drop?.status === "live" ? await customerDropOrders(drop, customer.payerId) : null;
     return c.json({
       products: products.map((p) => ({ id: p.id, name: p.name, priceCents: p.priceCents, stock: p.stock, limitedDrop: p.limitedDrop })),
       drop: drop && !drop.cleared ? { status: drop.status, startedAt: drop.startedAt, stockTotal: drop.stockTotal } : null,
       perCustomerLimit: policy.dropLimitPerCustomer,
+      yours: yours && { units: yours.units, approvalPath: yours.awaitingToken && `/approve/${yours.awaitingToken}` },
     });
   })
 
