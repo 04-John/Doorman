@@ -46,10 +46,17 @@
       - It shows sooner: the 18s eligibility check is gone, and PayPal starts loading as soon as the store or approval page opens. From the store ("Ask Ava to buy it") it's ready in about 2s. A freshly opened approval link still waits about 15s for PayPal's sandbox to start (shown as "Loading PayPal…").
       - Approvals older than 15 minutes now expire everywhere, so old drop runs no longer trigger "Another one for the same customer" or inflate "Awaiting approval".
       - Doorman's refusals no longer show as red 409 errors in the console; Log in with PayPal looks like PayPal's button and says "Opening PayPal…" while the sandbox loads.
+  - **Nov 1:**
+    - **You tested the whole agent purchase:** Ava bought with your pass, you approved in PayPal, and it was charged.
+    - **Review round 3:** real product photos (Pexels and Unsplash, no logos, credited in `apps/web/public/products/CREDITS.md`), and the merchant avatar opens a profile menu.
+    - **Checked the official rules** (Nov 1). Changes to the plan:
+      - Judges need a sandbox buyer login to test the PayPal parts.
+      - Keep the demo awake until Dec 15.
+      - Opt into AG Grid and Render; don't claim APIMatic unless we actually use it.
 - **Next step:**
-  - You: log in with PayPal once more (old logins were in memory), then test the store → link → buy → approve path, and the cart checkout with a sandbox buyer.
   - You: create a Render account (sign in with GitHub).
-  - Claude: deploy to Render, add webhooks, README.
+  - You: in the PayPal developer dashboard, create a new US **personal** sandbox account just for judges, with a password you're happy to publish.
+  - Claude: deploy to Render, add webhooks, README with testing instructions.
 - **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
 
@@ -156,6 +163,9 @@
   - All screenshot-checked against the designs at desktop and phone sizes.
 - [x] Use AG Grid for the live traffic table (sponsor prize target) and update it live as agents arrive. It is themed with the design system's grid params and uses custom cells and a new-row flash.
 - [ ] Add the live URL to the PayPal app's Log in with PayPal return URLs.
+- [ ] PayPal webhooks on the live URL (order approved, payment captured, authorization voided), with signature verification.
+- [ ] Production settings: `DEMO_BUYER_PAYER_ID` = the judges' sandbox buyer, so Ava's drop orders expect the account judges log in with.
+- [ ] Keep the free Render service awake until Dec 15: a free uptime monitor pings `/health` every 10 minutes (one always-on service fits Render's free 750 hours a month).
 
 **You**
 - [ ] Review each screen as it lands and send fixes in one list per day.
@@ -169,12 +179,15 @@
 
 **Claude**
 - [ ] Clone the repo fresh and follow the README exactly. Fix anything that breaks.
-- [ ] README: what it is, architecture diagram, how to run, which PayPal APIs and AI tools are used and how, and the sponsor tools (AG Grid, APIMatic).
+- [ ] README: what it is, architecture diagram, how to run, which PayPal APIs and AI tools are used and how, and the sponsor tools (AG Grid, Render).
+- [ ] Testing instructions for judges (rules: required if a login is needed): the live URL, the judges' sandbox buyer email and password, and a 5-minute walkthrough.
+- [ ] Draft the Devpost text: problem, what it does, how it's built, the AI tools and how they're used, challenges, what's next.
 - [ ] Write the 3-minute video script and shot list.
 - [ ] Check the hosted demo works from a fresh browser with no login.
 
 **You**
 - [ ] **Nov 9:** record the video with OBS Studio (free). No copyrighted music. Keep it under 3:00.
+  - Record in a clean browser profile, or capture only the page. The rules ban third-party trademarks, and your bookmarks bar and extension icons show other companies' logos.
 - [ ] **Nov 10:** upload to YouTube as **Public**.
 - [ ] **Nov 10:** make the GitHub repo public and confirm the MIT license shows in the About section.
 
@@ -184,7 +197,7 @@
 
 - [ ] Fill in the Devpost submission: name, tagline, description (problem, what it does, how we built it, challenges, what's next), "Built with" tags, repo URL, demo URL, YouTube link.
 - [ ] State which AI tools are used and how (required).
-- [ ] Select the AG Grid sponsor prize (one sponsor prize can be won) and mention APIMatic usage.
+- [ ] Opt into the AG Grid and Render sponsor prizes (a project can win at most one sponsor prize). Only claim APIMatic if we actually use an APIMatic tool.
 - [ ] Submit, then confirm the "submitted" status on Devpost.
 - [ ] Keep the hosted demo running and free until **Dec 15** (judging runs Dec 1–15).
 

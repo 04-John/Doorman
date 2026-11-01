@@ -5,6 +5,7 @@ import { api, type MerchantInfo, type Rules, type StoreInfo } from "../lib/api";
 import { money } from "../lib/format";
 import { Skeleton, Spinner } from "../ui/bits";
 import { MerchantTopBar } from "../ui/chrome";
+import { ProductPhoto } from "../ui/product";
 import { DECISION, ICON, Icon } from "../ui/status";
 import { Notice, StaticSwitch, fieldBox, fieldLabel, readOnlyBox } from "./setup/parts";
 import { RulesEditor } from "./setup/RulesEditor";
@@ -363,17 +364,7 @@ function Products({ store, limit, limitValid, onLimit }: { store: StoreInfo; lim
       {store.products.map((p, i) => (
         <div key={p.id} style={{ borderTop: i === 0 ? 0 : "1px solid #E4E2DC", background: p.limitedDrop ? "#FAF9F6" : "#FFFFFF" }}>
           <div className="su-prod-row">
-            <div
-              aria-hidden="true"
-              style={{
-                gridArea: "img",
-                width: 52,
-                height: 52,
-                borderRadius: 9,
-                background: "repeating-linear-gradient(135deg,#ECEAE4 0 6px,#F4F3EF 6px 12px)",
-                border: "1px solid #E4E2DC",
-              }}
-            />
+            <ProductPhoto productId={p.id} style={{ gridArea: "img", width: 52, height: 52, borderRadius: 9, border: "1px solid #E4E2DC" }} />
             <div style={{ gridArea: "name", fontSize: 16, fontWeight: 600, minWidth: 0 }}>{p.name}</div>
             <div className="mono" style={{ gridArea: "price", fontSize: 15 }}>
               {money(p.priceCents)}

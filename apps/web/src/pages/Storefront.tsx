@@ -6,6 +6,7 @@ import { api, type Pass, type StoreInfo } from "../lib/api";
 import { money } from "../lib/format";
 import { preloadPayPal } from "../lib/paypal";
 import { Skeleton } from "../ui/bits";
+import { DROP_HERO, ProductPhoto } from "../ui/product";
 import { AgentAvatar } from "../ui/status";
 import { useToast } from "../ui/toast";
 import { CartDrawer, useCart } from "./store/Cart";
@@ -21,8 +22,6 @@ const AGENT_STEPS = [
   ["Approve each purchase", " in PayPal"],
 ] as const;
 
-// Striped stand-in for product photography.
-const stripes = (step: number) => `repeating-linear-gradient(135deg,#ECEAE4 0 ${step}px,#F4F3EF ${step}px ${step * 2}px)`;
 
 // The customer's most recent live pass, if they've linked an assistant.
 function useLinkedAgent() {
@@ -200,21 +199,12 @@ export default function Storefront() {
       ) : (
         <>
           <section id="drop" className="sf-wrap sf-gutter sf-hero">
-            <div
-              style={{
-                aspectRatio: "4 / 5",
-                borderRadius: 20,
-                background: stripes(10),
-                display: "grid",
-                placeItems: "center",
-                fontFamily: "var(--mono)",
-                fontSize: 12,
-                fontWeight: 500,
-                color: "#6B6E76",
-              }}
-            >
-              hero photo · {hero?.name ?? "Night Shift Hoodie"}
-            </div>
+            <img
+              src={DROP_HERO.src}
+              alt={DROP_HERO.alt}
+              fetchPriority="high"
+              style={{ display: "block", width: "100%", aspectRatio: "4 / 5", objectFit: "cover", borderRadius: 20, background: "#1B1D22" }}
+            />
 
             <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
               {store && hero ? (
@@ -380,7 +370,8 @@ function StockBar({ left, total }: { left: number; total: number }) {
 function ProductCard({ product, onAdd }: { product: Product | null; onAdd?: () => void }) {
   return (
     <li style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div aria-hidden="true" style={{ aspectRatio: "1", borderRadius: 16, background: stripes(8), position: "relative" }}>
+      <div className="sf-photo" style={{ aspectRatio: "1", borderRadius: 16, position: "relative", overflow: "hidden", background: "#ECEAE4" }}>
+        {product && <ProductPhoto productId={product.id} style={{ width: "100%", height: "100%" }} />}
         {product?.limitedDrop && (
           <span
             style={{

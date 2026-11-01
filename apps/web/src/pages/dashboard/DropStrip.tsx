@@ -2,6 +2,7 @@
 import type { Dashboard } from "../../lib/api";
 import { elapsed, money } from "../../lib/format";
 import { Spinner, StockBar } from "../../ui/bits";
+import { ProductPhoto } from "../../ui/product";
 
 export type Phase = "before" | "live" | "soldout";
 
@@ -62,23 +63,7 @@ export function DropStrip({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-        <div
-          aria-hidden="true"
-          style={{
-            width: 54,
-            height: 54,
-            flex: "none",
-            borderRadius: 10,
-            background: "repeating-linear-gradient(135deg,#ECEAE4 0 6px,#F4F3EF 6px 12px)",
-            border: "1px solid #E4E2DC",
-            display: "grid",
-            placeItems: "center",
-            font: "500 10px var(--mono)",
-            color: "#6B6E76",
-          }}
-        >
-          IMG
-        </div>
+        <ProductPhoto productId="hoodie-night-shift" style={{ width: 54, height: 54, borderRadius: 10, border: "1px solid #E4E2DC" }} />
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em" }}>Night Shift Hoodie drop</span>

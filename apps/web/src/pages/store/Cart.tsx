@@ -6,6 +6,7 @@ import { api, type CartLine, type WebOrder } from "../../lib/api";
 import { money } from "../../lib/format";
 import { KeyValues } from "../../ui/mobile";
 import { PayPalButton } from "../../ui/PayPalButton";
+import { ProductPhoto } from "../../ui/product";
 import { ICON, Icon } from "../../ui/status";
 
 export interface CartItem extends CartLine {
@@ -34,8 +35,6 @@ export function useCart() {
   }, [items]);
   return [items, setItems] as const;
 }
-
-const stripes = "repeating-linear-gradient(135deg,#ECEAE4 0 6px,#F4F3EF 6px 12px)";
 
 function Result({ order, onClose }: { order: WebOrder; onClose: () => void }) {
   const charged = order.status === "charged";
@@ -167,7 +166,7 @@ export function CartDrawer({
                 const atLimit = item.limitedDrop && dropLimit != null && dropUnits >= dropLimit;
                 return (
                   <li key={`${item.productId}-${item.size}`} style={{ display: "flex", gap: 14, padding: "14px 0", borderTop: i ? "1px solid #EEEDE8" : "none" }}>
-                    <div aria-hidden="true" style={{ width: 64, height: 64, flex: "none", borderRadius: 10, background: stripes }} />
+                    <ProductPhoto productId={item.productId} style={{ width: 64, height: 64, borderRadius: 10 }} />
                     <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                         <div>

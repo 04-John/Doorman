@@ -262,3 +262,8 @@ select:focus-visible {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+.dm-menu-item:hover,
+.dm-menu-item:focus-visible {
+  background: var(--hover);
+  color: var(--ink);
+}

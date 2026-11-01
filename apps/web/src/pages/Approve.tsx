@@ -7,6 +7,7 @@ import { preloadPayPal } from "../lib/paypal";
 import { Skeleton } from "../ui/bits";
 import { BigButton, KeyValues, MobileShell, PayPalLoginButton, TickLine } from "../ui/mobile";
 import { PayPalButton } from "../ui/PayPalButton";
+import { ProductPhoto } from "../ui/product";
 import { AgentAvatar, ICON, Icon, IdentityBadge } from "../ui/status";
 
 // "Size M · Qty 1"
@@ -36,9 +37,7 @@ function Loading({ agent }: { agent?: string }) {
 function ProductCard({ a }: { a: Approval }) {
   return (
     <div style={{ border: "1px solid #E4E2DC", borderRadius: 16, overflow: "hidden" }}>
-      <div aria-hidden="true" style={{ height: 170, background: "repeating-linear-gradient(135deg,#ECEAE4 0 8px,#F4F3EF 8px 16px)", display: "grid", placeItems: "center", font: "500 11px var(--mono)", color: "#6B6E76" }}>
-        product photo
-      </div>
+      <ProductPhoto productId={a.product.id} style={{ width: "100%", height: 190, objectPosition: "center 35%" }} />
       <div style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <div style={{ fontSize: 17, fontWeight: 600 }}>{a.product.name}</div>
@@ -282,7 +281,7 @@ export default function Approve() {
             </div>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", border: "1px solid #E4E2DC", borderRadius: 14 }}>
-            <div aria-hidden="true" style={{ width: 52, height: 52, borderRadius: 10, background: "repeating-linear-gradient(135deg,#ECEAE4 0 6px,#F4F3EF 6px 12px)" }} />
+            <ProductPhoto productId={a.product.id} style={{ width: 52, height: 52, borderRadius: 10 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 15.5, fontWeight: 600 }}>{a.product.name}</div>
               <div style={{ fontSize: 13.5, color: "#4A4D55" }}>{itemLine(a)}</div>

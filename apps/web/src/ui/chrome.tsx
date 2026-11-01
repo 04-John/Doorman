@@ -1,5 +1,11 @@
 // App chrome: logo, sandbox tag, merchant top bar.
-import { NavLink } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink } from "react-router";
+import { api, type MerchantInfo } from "../lib/api";
+import { shortId } from "../lib/format";
+import { ICON, Icon } from "./status";
+
+const REPO_URL = "https://github.com/04-John/Doorman";
 
 export function LogoMark({ size = 24, color = "#FFFFFF" }: { size?: number; color?: string }) {
   return (
@@ -99,9 +105,120 @@ export function MerchantTopBar() {
           View store
         </NavLink>
       </nav>
-      <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#E9E1D3", color: "#15171C", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700 }} title="Maya, Static Supply">
-        M
-      </div>
+      <ProfileMenu />
     </header>
+  );
+}
+
+const menuItem = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "9px 12px", borderRadius: 8, fontSize: 14.5, color: "#15171C" } as const;
+
+// The merchant's avatar opens who's signed in, the connected PayPal account and shortcuts.
+function ProfileMenu() {
+  const [open, setOpen] = useState(false);
+  const [merchant, setMerchant] = useState<MerchantInfo | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    api.merchant().then(setMerchant, () => setMerchant({ connected: false, email: null, merchantId: null }));
+    root.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
+    const away = (e: MouseEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", key);
+    };
+  }, [open]);
+
+  const close = () => setOpen(false);
+
+  return (
+    <div ref={root} style={{ position: "relative" }}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account: Maya, Static Supply"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: "50%",
+          border: open ? "2px solid #FFFFFF" : "2px solid transparent",
+          background: "#E9E1D3",
+          color: "#15171C",
+          display: "grid",
+          placeItems: "center",
+          fontSize: 13,
+          fontWeight: 700,
+          padding: 0,
+        }}
+      >
+        M
+      </button>
+      {open && (
+        <div
+          role="menu"
+          aria-label="Account"
+          style={{
+            position: "absolute",
+            right: 0,
+            top: "calc(100% + 10px)",
+            zIndex: 40,
+            width: 300,
+            background: "#FFFFFF",
+            color: "#15171C",
+            border: "1px solid #E4E2DC",
+            borderRadius: 14,
+            boxShadow: "0 12px 32px rgba(21,23,28,.18)",
+            padding: 8,
+            animation: "dm-fade .2s ease both",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px 12px" }}>
+            <span style={{ width: 40, height: 40, borderRadius: "50%", background: "#E9E1D3", display: "grid", placeItems: "center", fontSize: 16, fontWeight: 700 }}>M</span>
+            <div>
+              <div style={{ fontSize: 15.5, fontWeight: 600 }}>Maya</div>
+              <div style={{ fontSize: 13.5, color: "#4A4D55" }}>Owner · Static Supply</div>
+            </div>
+          </div>
+          <div style={{ margin: "0 4px 6px", padding: "10px 12px", borderRadius: 10, background: "#F4F3EF", fontSize: 13.5, lineHeight: 1.45 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 600 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: merchant?.connected === false ? "#B42318" : "#0F6B3E" }} />
+              {merchant === null ? "Checking PayPal…" : merchant.connected ? "PayPal business account connected" : "PayPal not reachable"}
+            </div>
+            {merchant?.email && <div style={{ color: "#4A4D55", marginTop: 3, overflowWrap: "anywhere" }}>{merchant.email}</div>}
+            {merchant?.merchantId && (
+              <div className="mono" style={{ color: "#6B6E76", fontSize: 12.5, marginTop: 2 }}>
+                Merchant ID {shortId(merchant.merchantId, 6, 4)}
+              </div>
+            )}
+          </div>
+          {[
+            ["/setup", "Store settings"],
+            ["/rules", "Rules"],
+            ["/store", "View storefront"],
+            ["/", "Demo overview"],
+          ].map(([to, label]) => (
+            <Link key={to} to={to!} role="menuitem" onClick={close} className="dm-menu-item" style={menuItem}>
+              {label}
+              <Icon d={ICON.chevronRight} color="#8E919A" size={13} />
+            </Link>
+          ))}
+          <a href={REPO_URL} target="_blank" rel="noreferrer" role="menuitem" onClick={close} className="dm-menu-item" style={menuItem}>
+            Source code on GitHub
+            <span aria-hidden="true" style={{ color: "#8E919A", fontSize: 13 }}>
+              ↗
+            </span>
+            <span className="sr-only">(opens in a new tab)</span>
+          </a>
+          <div style={{ borderTop: "1px solid #EEEDE8", margin: "6px 4px 0", padding: "10px 8px 4px", fontSize: 12.5, lineHeight: 1.45, color: "#6B6E76" }}>
+            Demo merchant account: anyone can try the dashboard without signing in. Sandbox only, no real money.
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
