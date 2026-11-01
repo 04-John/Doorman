@@ -55,8 +55,8 @@
       - Opt into AG Grid and Render; don't claim APIMatic unless we actually use it.
 - **Next step:**
   - Done Nov 1: your Render account works, and the judges' sandbox buyer exists (`sb-nizs553636398@personal.example.com`, payer ID `ZTAEZCCT64MPW`, already set in `render.yaml`).
-  - You: deploy the Blueprint on Render (New > Blueprint > the Doorman repo), paste the four secrets from `.env`, and send Claude the live URL.
-  - Then you: add `<live URL>/auth/paypal/callback` to the PayPal app's Log in with PayPal return URLs.
+  - Done Nov 1: deployed on Render as a Blueprint. **Live URL: https://doorman-ppw2.onrender.com** (pages, API, database and the PayPal merchant connection all checked).
+  - You: add `https://doorman-ppw2.onrender.com/auth/paypal/callback` to the PayPal app's Log in with PayPal return URLs, then test as a judge would.
   - Claude: test the live site, add webhooks, the uptime monitor, and the README with testing instructions.
 - **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
