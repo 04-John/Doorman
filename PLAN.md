@@ -53,11 +53,17 @@
       - Judges need a sandbox buyer login to test the PayPal parts.
       - Keep the demo awake until Dec 15.
       - Opt into AG Grid and Render; don't claim APIMatic unless we actually use it.
+    - **Hosted:** deployed on Render as a Blueprint. **Live URL: https://doorman-ppw2.onrender.com**. Judges' sandbox buyer: `sb-nizs553636398@personal.example.com` (payer ID `ZTAEZCCT64MPW`, set in `render.yaml`). You tested the full flow on the live site with it.
+    - **Review round 4:**
+      - Storefront: once you have your hoodie from the drop it says "You've got yours" (or "Waiting for your approval" with a link), and a refused repeat buy is explained in the customer's terms.
+      - Fixed: a redeploy made Ava forget the passes customers gave her. The demo agents' tokens now live in the database.
+    - **PayPal webhooks:** the live server registers its webhook and verifies every delivery with PayPal (tested with PayPal's simulator). An approval whose page was closed still gets finished, and each order's detail panel lists the webhook events.
+    - **Keep-awake until Dec 15:** the server checks its own health every 10 minutes, plus a GitHub Actions check from outside. Idle database connections close after a minute so Neon can scale to zero.
+    - **README** rewritten for judges: live link, sandbox login, a 6-step walkthrough, how it works, PayPal APIs, AI, sponsor tools, run locally, deploy.
 - **Next step:**
-  - Done Nov 1: your Render account works, and the judges' sandbox buyer exists (`sb-nizs553636398@personal.example.com`, payer ID `ZTAEZCCT64MPW`, already set in `render.yaml`).
-  - Done Nov 1: deployed on Render as a Blueprint. **Live URL: https://doorman-ppw2.onrender.com** (pages, API, database and the PayPal merchant connection all checked).
-  - You: add `https://doorman-ppw2.onrender.com/auth/paypal/callback` to the PayPal app's Log in with PayPal return URLs, then test as a judge would.
-  - Claude: test the live site, add webhooks, the uptime monitor, and the README with testing instructions.
+  - You: test the live site with the README's "Try it" steps, exactly as a judge would, in a private window.
+  - You: check the repo's Actions tab shows "Keep the demo awake" running every 10 minutes.
+  - Claude: fresh-clone test of the README; video script and shot list; Devpost text draft.
 - **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
 
@@ -127,7 +133,7 @@
   - Outcome: **allow / step-up / throttle / block**, each with a reason code.
   - *Dropped: "several passes on one account". The payer match and per-customer limit cover the same abuse.*
 - [x] **Drop mode:** limited stock taken atomically at approval. After the customer approves, the payment is charged if every check passes; otherwise the hold is released automatically (payer mismatch, already bought, sold out).
-- [ ] **PayPal webhooks:** order approved, payment captured, authorization voided. *Moved to Phase 3: PayPal can only send them to a public URL, so they come with hosting.*
+- [x] **PayPal webhooks:** order approved, payment captured, authorization voided. *Moved to Phase 3 and done Nov 1.*
 - [x] **AI features (Gemini free tier):**
   - A plain-English explanation of each decision, cached so we stay inside free limits.
     - Uses `gemini-3.5-flash-lite` (about 1 second). Identical situations share one explanation.
@@ -164,9 +170,9 @@
   - All screenshot-checked against the designs at desktop and phone sizes.
 - [x] Use AG Grid for the live traffic table (sponsor prize target) and update it live as agents arrive. It is themed with the design system's grid params and uses custom cells and a new-row flash.
 - [ ] Add the live URL to the PayPal app's Log in with PayPal return URLs.
-- [ ] PayPal webhooks on the live URL (order approved, payment captured, authorization voided), with signature verification.
+- [x] PayPal webhooks on the live URL (order approved, authorization created and voided, capture completed and denied), with signature verification. Done Nov 1.
 - [x] Production settings: `DEMO_BUYER_PAYER_ID` = the judges' sandbox buyer (`ZTAEZCCT64MPW`, in `render.yaml`), so Ava's drop orders expect the account judges log in with. On Render the public URL and the login return URL come from the service's own address.
-- [ ] Keep the free Render service awake until Dec 15: a free uptime monitor pings `/health` every 10 minutes (one always-on service fits Render's free 750 hours a month).
+- [x] Keep the free Render service awake until Dec 15: the server pings its own `/health` every 10 minutes, and a GitHub Actions workflow checks from outside (one always-on service fits Render's free 750 hours a month). Done Nov 1.
 
 **You**
 - [ ] Review each screen as it lands and send fixes in one list per day.
@@ -180,8 +186,8 @@
 
 **Claude**
 - [ ] Clone the repo fresh and follow the README exactly. Fix anything that breaks.
-- [ ] README: what it is, architecture diagram, how to run, which PayPal APIs and AI tools are used and how, and the sponsor tools (AG Grid, Render).
-- [ ] Testing instructions for judges (rules: required if a login is needed): the live URL, the judges' sandbox buyer email and password, and a 5-minute walkthrough.
+- [x] README: what it is, architecture diagram, how to run, which PayPal APIs and AI tools are used and how, and the sponsor tools (AG Grid, Render). Done Nov 1.
+- [x] Testing instructions for judges (rules: required if a login is needed): the live URL, the judges' sandbox buyer email and password, and a 5-minute walkthrough. In the README, Nov 1.
 - [ ] Draft the Devpost text: problem, what it does, how it's built, the AI tools and how they're used, challenges, what's next.
 - [ ] Write the 3-minute video script and shot list.
 - [ ] Check the hosted demo works from a fresh browser with no login.
