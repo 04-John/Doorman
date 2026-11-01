@@ -342,6 +342,29 @@ export function DetailPanel({ eventId, perCustomer, onClose, onChanged }: { even
                         </span>
                       </div>
                     ))}
+                  {order.webhooks.length > 0 && (
+                    <div style={{ marginTop: 10, paddingTop: 12, borderTop: "1px solid #EEEDE8" }}>
+                      <div className="label" style={{ marginBottom: 6 }}>
+                        Confirmed by PayPal webhooks
+                      </div>
+                      {order.webhooks.map((w) => (
+                        <div key={`${w.type}-${w.at}`} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "5px 0" }}>
+                          <span style={{ marginTop: 2 }}>
+                            <Icon d={ICON.check} color="#0F6B3E" size={14} width={1.8} />
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="mono" style={{ fontSize: 12.5, overflowWrap: "anywhere" }}>
+                              {w.type}
+                            </div>
+                            <div style={{ fontSize: 13, color: "#4A4D55" }}>{w.outcome}</div>
+                          </div>
+                          <span className="mono" style={{ fontSize: 12, color: "#6B6E76" }}>
+                            {clock(w.at)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {order.status === "awaiting_approval" && (
                     <a href={order.approvalUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 14, fontWeight: 600, textDecoration: "underline" }}>
                       <Icon d={ICON.link} color="#15171C" width={1.5} />

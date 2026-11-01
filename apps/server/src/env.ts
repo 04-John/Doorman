@@ -31,6 +31,8 @@ const schema = z.object({
   PUBLIC_URL: z.url(),
   // Sandbox buyer the demo agent "Ava" shops for (its payer ID from Log in with PayPal).
   DEMO_BUYER_PAYER_ID: z.string().optional(),
+  // Set by Render on the host: the service's own public address.
+  RENDER_EXTERNAL_URL: z.url().optional(),
   PORT: z.coerce.number().int().positive().default(8787),
 });
 

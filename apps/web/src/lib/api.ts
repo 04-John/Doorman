@@ -73,6 +73,8 @@ export interface EventDetail {
     approvalUrl: string;
     releaseReason: string | null;
     paypal: { orderId: string; authorizationId: string | null; captureId: string | null };
+    // PayPal webhook events about this order, and what Doorman did about each.
+    webhooks: { type: string; outcome: string; at: string }[];
   };
   timeline: DoorEvent[];
   explanation: Explanation | null;

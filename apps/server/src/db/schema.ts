@@ -144,6 +144,22 @@ export const events = pgTable(
   (t) => [index("events_at_idx").on(t.at), index("events_drop_idx").on(t.dropId)],
 );
 
+// PayPal webhook events whose signature checked out. PayPal's event ID makes a
+// redelivery harmless.
+export const paypalWebhookEvents = pgTable(
+  "paypal_webhook_events",
+  {
+    id: text("id").primaryKey(),
+    type: text("type").notNull(),
+    resourceId: text("resource_id").notNull(),
+    paypalOrderId: text("paypal_order_id"),
+    // What Doorman did about it, e.g. "finished the order" or "nothing to do".
+    outcome: text("outcome").notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("paypal_webhook_events_order_idx").on(t.paypalOrderId)],
+);
+
 export const settings = pgTable("settings", {
   id: integer("id").primaryKey(),
   rulesText: text("rules_text").notNull(),

@@ -7,6 +7,7 @@ import { db, schema } from "../db/client.js";
 import { authorizeOrder, captureAuthorization, createAuthorizeOrder, voidAuthorization } from "../paypal/orders.js";
 import { ApprovalError } from "./approvals.js";
 import type { OrderRow } from "./checkout.js";
+import { oneAtATime } from "./locks.js";
 import { currentDrop, endDrop, getProduct, getRules, reserveStock, returnStock, unitsInDrop } from "./store.js";
 
 export interface CartLine {
@@ -82,19 +83,31 @@ async function view(paypalOrderId: string) {
   };
 }
 
-// Called once the shopper approves in PayPal: hold, check, then charge or release.
-export async function completeWebCheckout(paypalOrderId: string) {
+// Called once the shopper approves in PayPal (by the cart, or by PayPal's webhook if
+// they closed the page first): hold, check, then charge or release.
+export function completeWebCheckout(paypalOrderId: string) {
+  return oneAtATime(paypalOrderId, () => finishWebCheckout(paypalOrderId));
+}
+
+async function finishWebCheckout(paypalOrderId: string) {
   const rows = await rowsFor(paypalOrderId);
   if (rows.length === 0) throw new ApprovalError(404, "not_found", "No order with that ID.");
   if (rows[0]!.status !== "awaiting_approval") return view(paypalOrderId);
 
   const authorized = await authorizeOrder(paypalOrderId, `authorize-${paypalOrderId}`);
-  await setAll(paypalOrderId, {
-    status: "held",
-    authorizationId: authorized.authorizationId,
-    approvedPayerId: authorized.payerId,
-    approvedPayerEmail: authorized.payerEmail,
-  });
+  // Only one caller gets to move the order on from awaiting approval.
+  const claimed = await db
+    .update(schema.orders)
+    .set({
+      status: "held",
+      authorizationId: authorized.authorizationId,
+      approvedPayerId: authorized.payerId,
+      approvedPayerEmail: authorized.payerEmail,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(schema.orders.paypalOrderId, paypalOrderId), isNull(schema.orders.agentKeyId), eq(schema.orders.status, "awaiting_approval")))
+    .returning({ id: schema.orders.id });
+  if (claimed.length === 0) return view(paypalOrderId);
   const release = async (reason: string) => {
     await voidAuthorization(authorized.authorizationId!, `void-${paypalOrderId}`);
     await setAll(paypalOrderId, { status: "released", releaseReason: reason });

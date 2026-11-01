@@ -119,9 +119,16 @@ async function eventDetail(id: string) {
           .limit(4)
       : none,
   ]);
-  const [[pass], [customer]] = await Promise.all([
+  const [[pass], [customer], webhooks] = await Promise.all([
     order?.passId ? db.select().from(schema.passes).where(eq(schema.passes.id, order.passId)) : none,
     order?.expectedPayerId ? db.select().from(schema.customers).where(eq(schema.customers.payerId, order.expectedPayerId)) : none,
+    order
+      ? db
+          .select({ type: schema.paypalWebhookEvents.type, outcome: schema.paypalWebhookEvents.outcome, at: schema.paypalWebhookEvents.receivedAt })
+          .from(schema.paypalWebhookEvents)
+          .where(eq(schema.paypalWebhookEvents.paypalOrderId, order.paypalOrderId))
+          .orderBy(asc(schema.paypalWebhookEvents.receivedAt))
+      : none,
   ]);
 
   return {
@@ -138,6 +145,8 @@ async function eventDetail(id: string) {
       approvalUrl: approvalUrl(order),
       releaseReason: order.releaseReason,
       paypal: { orderId: order.paypalOrderId, authorizationId: order.authorizationId, captureId: order.captureId },
+      // What PayPal's webhooks reported about this order, and what Doorman did.
+      webhooks,
     },
     timeline: [...before.filter((b) => b.at < (timeline.at(-1)?.at ?? event.at)), ...timeline].sort((a, b) => +a.at - +b.at),
     explanation: event.explanation ? { text: event.explanation, source: "ai" as const } : null,

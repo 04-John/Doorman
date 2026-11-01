@@ -47,12 +47,14 @@ export async function getAppToken(): Promise<CachedToken> {
 interface PayPalRequest {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
+  // A body that's already JSON, sent byte for byte.
+  rawBody?: string;
   // Stable key for one logical operation, sent as PayPal-Request-Id so a retry
   // can never create a second order or capture.
   idempotencyKey?: string;
 }
 
-export async function paypal<T>(path: string, { method = "GET", body, idempotencyKey }: PayPalRequest = {}): Promise<T> {
+export async function paypal<T>(path: string, { method = "GET", body, rawBody, idempotencyKey }: PayPalRequest = {}): Promise<T> {
   const token = await getAppToken();
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token.value}`,
@@ -63,7 +65,7 @@ export async function paypal<T>(path: string, { method = "GET", body, idempotenc
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: rawBody ?? (body === undefined ? undefined : JSON.stringify(body)),
   });
   const text = await res.text();
   const parsed: unknown = text ? JSON.parse(text) : undefined;

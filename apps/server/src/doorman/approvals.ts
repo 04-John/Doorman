@@ -8,6 +8,7 @@ import { money, type Decision, type Tier } from "./engine.js";
 import type { EventAction } from "../db/schema.js";
 import { demoAgentByKeyId } from "../sim/demo-agents.js";
 import { recordEvent } from "./events.js";
+import { oneAtATime } from "./locks.js";
 import type { CustomerRow } from "./sessions.js";
 import { APPROVAL_EXPIRED, APPROVAL_MINUTES, endDrop, getProduct, getRules, reserveStock, unitsInDrop } from "./store.js";
 
@@ -82,6 +83,17 @@ async function update(order: OrderRow, values: Partial<OrderRow>): Promise<Order
   return row!;
 }
 
+// Moves an order on from awaiting approval exactly once, even if two callers
+// (or two servers sharing the database) finish it at the same moment.
+async function claim(order: OrderRow, values: Partial<OrderRow>): Promise<OrderRow | null> {
+  const [row] = await db
+    .update(schema.orders)
+    .set({ ...values, updatedAt: new Date() })
+    .where(and(eq(schema.orders.id, order.id), eq(schema.orders.status, "awaiting_approval")))
+    .returning();
+  return row ?? null;
+}
+
 function logOrderEvent(
   order: OrderRow,
   agent: { keyId: string; name: string; operator: string } | undefined,
@@ -118,7 +130,14 @@ async function release(order: OrderRow, code: string, reason: string, log: (code
   return released;
 }
 
+// Called by the approval page once the customer approves in PayPal, or by PayPal's
+// webhook if they closed the page first. Whichever comes second finds it done.
 export async function authorizeApproval(token: string, sessionCustomer: CustomerRow | null) {
+  const { paypalOrderId } = await loadOrder(token);
+  return oneAtATime(paypalOrderId, () => finishApproval(token, sessionCustomer));
+}
+
+async function finishApproval(token: string, sessionCustomer: CustomerRow | null) {
   let order = await loadOrder(token);
   if (order.status !== "awaiting_approval") return approvalView(token);
   if (order.stepUp && !sessionCustomer) {
@@ -130,14 +149,16 @@ export async function authorizeApproval(token: string, sessionCustomer: Customer
   const log = (action: EventAction, decision: Decision) => (code: string, reason: string) =>
     logOrderEvent(order, agent, customerName, action, decision, code, reason);
 
-  // 1. Hold the money.
+  // 1. Hold the money. Only one caller gets to move the order on from here.
   const authorized = await authorizeOrder(order.paypalOrderId, `authorize-${order.id}`);
-  order = await update(order, {
+  const claimed = await claim(order, {
     status: "held",
     authorizationId: authorized.authorizationId,
     approvedPayerId: authorized.payerId,
     approvedPayerEmail: authorized.payerEmail,
   });
+  if (!claimed) return approvalView(token);
+  order = claimed;
   await log("approve", "allowed")("APPROVED", `Customer approved in PayPal. ${money(order.amountCents)} held`);
 
   // 2. The person who paid must be the person who linked the agent (or, for a
@@ -187,9 +208,8 @@ export async function retryInput(token: string) {
 
 export async function declineApproval(token: string) {
   const order = await loadOrder(token);
-  if (order.status === "awaiting_approval") {
+  if (order.status === "awaiting_approval" && (await claim(order, { status: "declined", releaseReason: "Declined by the customer" }))) {
     const { agent, expected } = await context(order);
-    await update(order, { status: "declined", releaseReason: "Declined by the customer" });
     await logOrderEvent(order, agent, expected?.name ?? null, "release", "blocked", "DECLINED", "Customer declined. Nothing charged");
   }
   return approvalView(token);
