@@ -273,11 +273,13 @@
   font-size: 16px;
 }
 
-/* Cart drawer becomes a bottom sheet on phones. */
+/* Cart drawer becomes a bottom sheet on phones. The store's own cart styles load
+   after this file, so these selectors carry an extra .sf-cart to win. */
 @media (max-width: 640px) {
-  .sf-cart-panel {
+  .sf-cart .sf-cart-panel {
     top: auto;
     left: 0;
+    right: 0;
     width: 100%;
     max-height: 88dvh;
     border-radius: 28px 28px 0 0;
@@ -285,7 +287,7 @@
     box-shadow: 0 -20px 50px rgba(21, 23, 28, 0.2);
     animation: m-up 0.4s var(--m-ease) both;
   }
-  .sf-cart-head {
+  .sf-cart .sf-cart-head {
     padding-top: 22px;
   }
 }
