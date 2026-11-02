@@ -5,8 +5,10 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { secureHeaders } from "hono/secure-headers";
 import { closeDb } from "./db/client.js";
 import { eventBus } from "./doorman/events.js";
+import { merchantPasswordSet } from "./doorman/merchant-session.js";
 import { env } from "./env.js";
 import { PayPalError } from "./paypal/client.js";
 import { agentRoutes } from "./routes/agents.js";
@@ -26,7 +28,24 @@ const app = new Hono();
 // is refused before it's read into memory.
 app.use("*", bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json({ error: "too_large" }, 413) }));
 
-app.get("/health", (c) => c.json({ ok: true, paypal: env.PAYPAL_ENV }));app.route("/", authRoutes);
+// Browser protections on every response: no other site can frame Doorman's pages
+// (so nobody can trick a click on "Approve"), no guessing file types, and links
+// out send only the site's address, never an approval link's token.
+app.use(
+  "*",
+  secureHeaders({
+    contentSecurityPolicy: { frameAncestors: ["'none'"], baseUri: ["'self'"], objectSrc: ["'none'"] },
+    xFrameOptions: "DENY",
+    referrerPolicy: "strict-origin-when-cross-origin",
+    strictTransportSecurity: env.PUBLIC_URL.startsWith("https://") ? "max-age=15552000" : false,
+    // PayPal's checkout and login windows report back to the page that opened them.
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+  }),
+);
+
+app.get("/health", (c) => c.json({ ok: true, paypal: env.PAYPAL_ENV }));
+app.route("/", authRoutes);
 app.route("/", agentRoutes);
 app.route("/", mcpRoutes);
 app.route("/", customerRoutes);
@@ -42,9 +61,11 @@ const webDist = fileURLToPath(new URL("../../web/dist", import.meta.url));
 if (existsSync(webDist)) {
   const root = relative(process.cwd(), webDist) || ".";
   app.use("/*", serveStatic({ root }));
-  // Client-side routes (/dashboard, /approve/…) all load the app shell; API paths keep their 404s.
+  // Client-side routes (/dashboard, /approve/…) all load the app shell. API paths keep
+  // their 404s, and so do files that aren't there (/.env, /.git/config, /wp-login.php).
   const shell = serveStatic({ root, path: "index.html" });
-  app.get("*", (c, next) => (c.req.path.startsWith("/api/") ? next() : shell(c, next)));
+  const notAPage = /\/\.|\.[^/]*$/;
+  app.get("*", (c, next) => (c.req.path.startsWith("/api/") || notAPage.test(c.req.path) ? next() : shell(c, next)));
 }
 
 app.onError((err, c) => {
@@ -58,6 +79,8 @@ app.onError((err, c) => {
 
 // A stray rejected promise (say, writing to a browser that just left) shouldn't end a live demo.
 process.on("unhandledRejection", (reason) => console.error("[doorman] unhandled rejection:", reason));
+
+if (!merchantPasswordSet) console.warn("[doorman] MERCHANT_PASSWORD isn't set, so the merchant dashboard, rules and settings are locked.");
 
 // So customers can link the demo agents before anyone runs a drop.
 ensureDemoAgents().catch((err) => console.error("[doorman] couldn't register the demo agents:", err));

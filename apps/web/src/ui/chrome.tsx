@@ -1,7 +1,7 @@
 // App chrome: logo, sandbox tag, merchant top bar.
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router";
-import { api, type MerchantInfo } from "../lib/api";
+import { api, MERCHANT_SIGNED_OUT, type MerchantInfo } from "../lib/api";
 import { shortId } from "../lib/format";
 import { ICON, Icon } from "./status";
 
@@ -133,6 +133,7 @@ function ProfileMenu() {
   }, [open]);
 
   const close = () => setOpen(false);
+  const signOut = () => api.merchantLogout().finally(() => window.dispatchEvent(new Event(MERCHANT_SIGNED_OUT)));
 
   return (
     <div ref={root} style={{ position: "relative" }}>
@@ -214,8 +215,11 @@ function ProfileMenu() {
             </span>
             <span className="sr-only">(opens in a new tab)</span>
           </a>
+          <button type="button" role="menuitem" onClick={() => void signOut()} className="dm-menu-item" style={{ ...menuItem, width: "100%", border: 0, background: "transparent", textAlign: "left" }}>
+            Sign out
+          </button>
           <div style={{ borderTop: "1px solid #EEEDE8", margin: "6px 4px 0", padding: "10px 8px 4px", fontSize: 12.5, lineHeight: 1.45, color: "#6B6E76" }}>
-            Demo merchant account: anyone can try the dashboard without signing in. Sandbox only, no real money.
+            Demo merchant account. Sandbox only, no real money.
           </div>
         </div>
       )}

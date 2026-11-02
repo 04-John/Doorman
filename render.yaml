@@ -27,6 +27,9 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      # Opens the merchant dashboard, rules and settings (judges get it in the testing instructions).
+      - key: MERCHANT_PASSWORD
+        sync: false
       # The judges' sandbox buyer (published in the README's testing instructions).
       - key: DEMO_BUYER_PAYER_ID
         value: ZTAEZCCT64MPW
