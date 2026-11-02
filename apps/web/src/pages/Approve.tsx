@@ -327,7 +327,7 @@ export default function Approve() {
               {message}
             </div>
           )}
-          <button type="button" onClick={decline} style={{ ...linkButton, marginTop: "auto", alignSelf: "center" }}>
+          <button type="button" onClick={decline} className="m-hit" style={{ ...linkButton, marginTop: "auto", alignSelf: "center" }}>
             This isn't me / Decline
           </button>
         </>
@@ -354,7 +354,7 @@ export default function Approve() {
           )}
           <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
             <PayPalButton order={pay} onApproved={onApproved} onMessage={setMessage} />
-            <button type="button" onClick={decline} style={linkButton}>
+            <button type="button" onClick={decline} className="m-hit" style={linkButton}>
               This isn't me / Decline
             </button>
           </div>

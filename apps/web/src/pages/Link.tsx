@@ -401,7 +401,7 @@ export default function LinkAgent() {
               <div style={{ fontSize: 16, fontWeight: 600 }}>{selected.name}</div>
               <div style={{ fontSize: 13.5, color: "#4A4D55" }}>by {selected.operator}</div>
             </div>
-            <button type="button" onClick={() => setStep("agent")} style={{ border: 0, background: "transparent", fontSize: 14, fontWeight: 500, color: "#4A4D55" }}>
+            <button type="button" onClick={() => setStep("agent")} className="m-hit" style={{ border: 0, background: "transparent", fontSize: 14, fontWeight: 500, color: "#4A4D55" }}>
               Change
             </button>
           </div>
@@ -541,7 +541,7 @@ function PassRow({ pass, onRevoke }: { pass: Pass; onRevoke: () => void }) {
       </div>
       {active && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, paddingTop: 10, borderTop: "1px solid #EEEDE8" }}>
-          <button type="button" onClick={onRevoke} style={{ height: 36, padding: "0 12px", border: 0, borderRadius: 9, background: "transparent", color: "#B42318", fontSize: 14.5, fontWeight: 600 }}>
+          <button type="button" onClick={onRevoke} className="m-hit" style={{ height: 36, padding: "0 12px", border: 0, borderRadius: 9, background: "transparent", color: "#B42318", fontSize: 14.5, fontWeight: 600 }}>
             Revoke
           </button>
         </div>
@@ -637,7 +637,7 @@ export function Passes() {
             <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.015em", margin: 0 }}>My passes</h1>
             <span style={{ fontSize: 14, color: "#4A4D55", textAlign: "right" }}>
               {customer.name ?? customer.email} ·{" "}
-              <button type="button" onClick={() => void logout()} style={{ border: 0, background: "transparent", padding: 0, fontSize: 14, color: "#4A4D55", textDecoration: "underline" }}>
+              <button type="button" onClick={() => void logout()} className="m-hit" style={{ border: 0, background: "transparent", padding: 0, fontSize: 14, color: "#4A4D55", textDecoration: "underline" }}>
                 Log out
               </button>
             </span>

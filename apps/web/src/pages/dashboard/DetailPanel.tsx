@@ -232,7 +232,7 @@ export function DetailPanel({ eventId, perCustomer, onClose, onChanged, sheet = 
                 <span className="mono" style={{ fontSize: 12.5, color: "#6B6E76" }}>
                   Request {requestNumber(event.id)} · {clock(event.at)} · {ACTION[event.action]}
                 </span>
-                <button type="button" onClick={onClose} aria-label="Close" style={{ width: sheet ? 40 : 34, height: sheet ? 40 : 34, border: 0, borderRadius: sheet ? "50%" : 8, background: "#F4F3EF", display: "grid", placeItems: "center" }}>
+                <button type="button" onClick={onClose} aria-label="Close" className={sheet ? "m-hit" : undefined} style={{ width: sheet ? 40 : 34, height: sheet ? 40 : 34, border: 0, borderRadius: sheet ? "50%" : 8, background: "#F4F3EF", display: "grid", placeItems: "center" }}>
                   <Icon d={ICON.close} color="#15171C" width={1.8} />
                 </button>
               </div>
