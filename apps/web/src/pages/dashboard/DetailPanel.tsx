@@ -117,7 +117,8 @@ function headline(detail: EventDetail): string {
 
 const card = { border: "1px solid #E4E2DC", borderRadius: 12, padding: 16 } as const;
 
-export function DetailPanel({ eventId, perCustomer, onClose, onChanged }: { eventId: string | null; perCustomer: number; onClose: () => void; onChanged: () => void }) {
+// On phones (sheet) it rises from the bottom instead of sliding in from the right.
+export function DetailPanel({ eventId, perCustomer, onClose, onChanged, sheet = false }: { eventId: string | null; perCustomer: number; onClose: () => void; onChanged: () => void; sheet?: boolean }) {
   const [detail, setDetail] = useState<EventDetail | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [busy, setBusy] = useState(false);
@@ -176,22 +177,46 @@ export function DetailPanel({ eventId, perCustomer, onClose, onChanged }: { even
       <aside
         aria-label="Request detail"
         aria-hidden={!open}
-        style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: 520,
-          maxWidth: "100vw",
-          background: "#FFFFFF",
-          boxShadow: "-24px 0 60px rgba(21,23,28,.18)",
-          transform: `translateX(${open ? "0" : "105%"})`,
-          transition: "transform .34s cubic-bezier(.2,.8,.2,1)",
-          zIndex: 21,
-          display: "flex",
-          flexDirection: "column",
-        }}
+        style={
+          sheet
+            ? {
+                position: "fixed",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: "92dvh",
+                background: "#FFFFFF",
+                borderRadius: "28px 28px 0 0",
+                boxShadow: "0 -20px 50px rgba(21,23,28,.2)",
+                transform: `translateY(${open ? "0" : "104%"})`,
+                transition: "transform .42s cubic-bezier(.2,.8,.2,1)",
+                zIndex: 21,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }
+            : {
+                position: "fixed",
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: 520,
+                maxWidth: "100vw",
+                background: "#FFFFFF",
+                boxShadow: "-24px 0 60px rgba(21,23,28,.18)",
+                transform: `translateX(${open ? "0" : "105%"})`,
+                transition: "transform .34s cubic-bezier(.2,.8,.2,1)",
+                zIndex: 21,
+                display: "flex",
+                flexDirection: "column",
+              }
+        }
       >
+        {sheet && (
+          <div className="m-sheet-grab" aria-hidden="true">
+            <span />
+          </div>
+        )}
         {!detail || !event ? (
           <div aria-busy="true" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
             <Skeleton width="60%" height={12} />
@@ -202,12 +227,12 @@ export function DetailPanel({ eventId, perCustomer, onClose, onChanged }: { even
           </div>
         ) : (
           <>
-            <div style={{ flex: "none", padding: "18px 24px 20px", borderBottom: "1px solid #E4E2DC" }}>
+            <div style={{ flex: "none", padding: sheet ? "6px 20px 16px" : "18px 24px 20px", borderBottom: "1px solid #E4E2DC" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span className="mono" style={{ fontSize: 12.5, color: "#6B6E76" }}>
                   Request {requestNumber(event.id)} · {clock(event.at)} · {ACTION[event.action]}
                 </span>
-                <button type="button" onClick={onClose} aria-label="Close" style={{ width: 34, height: 34, border: 0, borderRadius: 8, background: "#F4F3EF", display: "grid", placeItems: "center" }}>
+                <button type="button" onClick={onClose} aria-label="Close" style={{ width: sheet ? 40 : 34, height: sheet ? 40 : 34, border: 0, borderRadius: sheet ? "50%" : 8, background: "#F4F3EF", display: "grid", placeItems: "center" }}>
                   <Icon d={ICON.close} color="#15171C" width={1.8} />
                 </button>
               </div>
@@ -222,7 +247,7 @@ export function DetailPanel({ eventId, perCustomer, onClose, onChanged }: { even
               <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.32, letterSpacing: "-0.01em", marginTop: 12 }}>{headline(detail)}</div>
             </div>
 
-            <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "18px 24px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: sheet ? "16px 20px 20px" : "18px 24px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={card}>
                 <div className="label">Agent</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
@@ -375,7 +400,7 @@ export function DetailPanel({ eventId, perCustomer, onClose, onChanged }: { even
               )}
             </div>
 
-            <div style={{ flex: "none", display: "flex", gap: 10, padding: "14px 24px", borderTop: "1px solid #E4E2DC", background: "#FFFFFF", minHeight: 72 }}>
+            <div style={{ flex: "none", display: "flex", gap: 10, padding: sheet ? "12px 20px calc(14px + env(safe-area-inset-bottom, 0px))" : "14px 24px", borderTop: "1px solid #E4E2DC", background: "#FFFFFF", minHeight: 72 }}>
               {detail.agent && !detail.agent.blocked && (
                 <button
                   type="button"

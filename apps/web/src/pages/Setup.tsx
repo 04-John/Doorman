@@ -4,6 +4,8 @@ import { useNavigate } from "react-router";
 import { api, type MerchantInfo, type Rules, type StoreInfo } from "../lib/api";
 import { money } from "../lib/format";
 import { Skeleton, Spinner } from "../ui/bits";
+import { MerchantTabBar, MerchantTopBar as MobileMerchantTopBar } from "../mobile/chrome";
+import { useIsMobile } from "../mobile/useIsMobile";
 import { MerchantTopBar } from "../ui/chrome";
 import { ProductPhoto } from "../ui/product";
 import { DECISION, ICON, Icon } from "../ui/status";
@@ -24,6 +26,7 @@ export default function Setup({ mode = "setup" }: { mode?: "setup" | "rules" }) 
   const [merchant, setMerchant] = useState<Loaded<MerchantInfo>>(null);
   const [merchantAttempt, setMerchantAttempt] = useState(0);
   const setup = mode === "setup";
+  const phone = useIsMobile();
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +111,19 @@ export default function Setup({ mode = "setup" }: { mode?: "setup" | "rules" }) 
         merchant={merchant}
         onRetryMerchant={() => setMerchantAttempt((n) => n + 1)}
       />
+    );
+  }
+
+  // Phones: same screens inside the merchant app, with its tab bar.
+  if (phone) {
+    return (
+      <div className="m-app m-merchant" data-screen-label={setup ? "M2 Settings" : "M2 Rules"}>
+        <MobileMerchantTopBar />
+        <div className="m-fade" style={{ display: "flex", flexDirection: "column" }}>
+          {content}
+        </div>
+        <MerchantTabBar />
+      </div>
     );
   }
 

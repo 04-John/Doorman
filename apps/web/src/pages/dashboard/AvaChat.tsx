@@ -4,7 +4,7 @@ import type { Transcript, TranscriptEntry } from "../../lib/api";
 import { clock, money } from "../../lib/format";
 import { ICON, Icon } from "../../ui/status";
 
-type Message =
+export type Message =
   | { kind: "john"; at: string; text: string }
   | { kind: "store"; at: string; call: string; ok: boolean; text: string }
   | { kind: "note"; text: string; tone: "adapt" | "paid" | "released" }
@@ -31,7 +31,7 @@ function describe(entry: TranscriptEntry, turn: StoreTurn): { call: string; text
   return { call, text: "OK" };
 }
 
-function toMessages({ transcript, orders }: Transcript): Message[] {
+export function toMessages({ transcript, orders }: Transcript): Message[] {
   const messages: Message[] = [];
   let lastRefusedCart: number | null = null;
   for (const entry of transcript) {
@@ -73,7 +73,7 @@ const NOTE_STYLE = {
 
 const meta = { display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6B6E76" } as const;
 
-function MessageView({ m }: { m: Message }) {
+export function MessageView({ m }: { m: Message }) {
   if (m.kind === "john")
     return (
       <>

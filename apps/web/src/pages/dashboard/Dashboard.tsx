@@ -6,9 +6,11 @@ import { KpiTile, Skeleton } from "../../ui/bits";
 import { MerchantTopBar } from "../../ui/chrome";
 import { DECISION, ICON, IDENTITY } from "../../ui/status";
 import { useToast } from "../../ui/toast";
+import { useIsMobile } from "../../mobile/useIsMobile";
 import { AvaChat } from "./AvaChat";
 import { DetailPanel } from "./DetailPanel";
 import { DropStrip, type Phase } from "./DropStrip";
+import { MobileDashboard } from "./MobileDashboard";
 import { moneyAfter, toRow, type Row } from "./rows";
 import { TrafficGrid } from "./TrafficGrid";
 
@@ -90,6 +92,7 @@ export default function Dashboard() {
   const hits = useRef<number[]>([]);
   const summaryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const toast = useToast();
+  const mobile = useIsMobile();
 
   const refreshSummary = useCallback(async () => setSummary(await api.dashboard()), []);
 
@@ -216,6 +219,34 @@ export default function Dashboard() {
     { label: "Awaiting approval", value: money((k?.awaitingApprovalCents ?? 0) + (k?.heldCents ?? 0)), icon: ICON.dollar, fg: "#8A5300", bg: "#FDF1DC" },
     { label: "Charged", value: money(k?.chargedCents ?? 0), icon: ICON.dollar, fg: "#0F6B3E", bg: "#E4F4EA" },
   ];
+
+  // Phones get the dashboard as an app; same data, same actions.
+  if (mobile) {
+    return (
+      <MobileDashboard
+        summary={summary}
+        rows={rows}
+        visible={visible}
+        transcript={transcript}
+        phase={phase}
+        running={running}
+        booting={booting}
+        now={now}
+        rps={rps}
+        perCustomer={perCustomer}
+        counts={counts}
+        decision={decision}
+        setDecision={setDecision}
+        tier={tier}
+        setTier={setTier}
+        selected={selected}
+        setSelected={setSelected}
+        run={() => void run()}
+        reset={() => void reset()}
+        reloadAll={() => void reloadAll()}
+      />
+    );
+  }
 
   const overlay =
     rows.length === 0 ? (
