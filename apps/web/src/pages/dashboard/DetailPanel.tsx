@@ -45,10 +45,11 @@ function checkNote(check: Check, detail: EventDetail): string {
 }
 
 // The checks for this row. Payment events take theirs from the order's checkout.
+// (The server adds the payer match to every order's row, so that one doesn't count as the row's own.)
 function checksFor(detail: EventDetail): Check[] {
   const own = detail.event.checks;
   const checkout = detail.timeline.find((e) => e.action === "checkout");
-  const base = own.length ? own : (checkout?.checks ?? []);
+  const base = own.some((c) => c.id !== "payer_match") ? own : (checkout?.checks ?? []);
   const payer = own.find((c) => c.id === "payer_match");
   return CHECK_ORDER.map(
     (id) =>
