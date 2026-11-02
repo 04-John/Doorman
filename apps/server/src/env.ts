@@ -33,7 +33,7 @@ const schema = z.object({
   DEMO_BUYER_PAYER_ID: z.string().optional(),
   // Set by Render on the host: the service's own public address.
   RENDER_EXTERNAL_URL: z.url().optional(),
-  // How many proxies in front of the server add to X-Forwarded-For (2 on Render).
+  // How many proxies in front of the server add to X-Forwarded-For (3 on Render).
   TRUSTED_PROXIES: z.coerce.number().int().min(0).max(5).default(0),
   PORT: z.coerce.number().int().positive().default(8787),
 });

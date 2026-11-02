@@ -26,13 +26,7 @@ const app = new Hono();
 // is refused before it's read into memory.
 app.use("*", bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json({ error: "too_large" }, 413) }));
 
-app.get("/health", (c) => c.json({ ok: true, paypal: env.PAYPAL_ENV }));
-// TEMPORARY: how the host forwards the caller's own address. Removed once checked.
-app.get("/api/debug/forwarded", (c) => {
-  const h = (name: string) => c.req.header(name) ?? null;
-  return c.json({ trusted: env.TRUSTED_PROXIES, xff: h("x-forwarded-for"), xRealIp: h("x-real-ip"), trueClientIp: h("true-client-ip"), cfConnectingIp: h("cf-connecting-ip"), forwarded: h("forwarded") });
-});
-app.route("/", authRoutes);
+app.get("/health", (c) => c.json({ ok: true, paypal: env.PAYPAL_ENV }));app.route("/", authRoutes);
 app.route("/", agentRoutes);
 app.route("/", mcpRoutes);
 app.route("/", customerRoutes);

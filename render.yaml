@@ -15,9 +15,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      # Render's edge and its load balancer each add to X-Forwarded-For.
+      # Cloudflare, Render's load balancer and Render's proxy in front of the app
+      # each add an entry to X-Forwarded-For (checked on the live service, Nov 2).
       - key: TRUSTED_PROXIES
-        value: "2"
+        value: "3"
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET

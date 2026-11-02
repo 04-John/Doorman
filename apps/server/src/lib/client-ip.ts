@@ -3,7 +3,8 @@
 // Each proxy in front of the server adds an entry to the end of X-Forwarded-For,
 // and anything before those can be typed in by the client. So the client is the
 // entry added by the outermost proxy we trust. TRUSTED_PROXIES says how many
-// there are: 2 on Render, 0 when the server is reached directly (local development).
+// there are: 3 on Render (Cloudflare, Render's load balancer, Render's proxy in
+// front of the app), 0 when the server is reached directly (local development).
 //
 // The drop simulator runs inside this server and gives each bot a made-up address.
 // That address is believed only alongside the simulator's own header, which is
