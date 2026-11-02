@@ -73,6 +73,10 @@
     - The Phase 1 test bench API is off in production (it could capture or void any authorization by ID).
     - Dashboards and storefronts share one database read a second and stop polling in background tabs.
     - Clean shutdown on redeploy. README has a "Built to hold up" section.
+  - Done Nov 2: **merchant side behind a password** (pushed to `main`, live). Dashboard, rules, settings and all their APIs need `MERCHANT_PASSWORD`; the site only serves the built web app (no source maps, 404 for `/.env`, `/.git/…`), with anti-framing and other browser headers. Git history checked: no secret was ever committed.
+  - Done Nov 2: **mobile branch checked** (`mobile-app`, not pushed): typecheck and build pass; every screen tested at 390×844, including PayPal login, a drop and a PayPal approval; desktop at 1440px is pixel-identical to `main`. Fixed: phone dashboard crash, cart sheet, 44px touch areas, phone sign-in/sign-out, and phones no longer download AG Grid.
+  - **You:** add `MERCHANT_PASSWORD` on Render (Environment tab; copy the value from `.env`). Until then the live merchant side shows "locked". Put the same password in Devpost's testing instructions on Nov 11.
+  - **You:** review `mobile-app`, then merge it into `main` and push.
   - Claude: video script and shot list; Devpost text draft.
 - **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
