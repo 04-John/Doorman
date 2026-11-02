@@ -5,7 +5,7 @@ import { defaultPolicy } from "./policy.js";
 
 const now = new Date("2026-11-01T12:00:00Z");
 const hoodie = { priceCents: 6800, quantity: 1, limitedDrop: true, stock: 41 };
-const validPass = { capCents: 15000, expiresAt: new Date("2026-11-08T12:00:00Z"), revokedAt: null };
+const validPass = { capCents: 15000, spentCents: 0, expiresAt: new Date("2026-11-08T12:00:00Z"), revokedAt: null };
 
 function input(overrides: Partial<DecisionInput>): DecisionInput {
   return {
@@ -56,6 +56,19 @@ test("a second drop item for the same customer is blocked", () => {
 test("buying over the pass cap is blocked", () => {
   const r = decide(input({ item: { ...hoodie, priceCents: 20000, limitedDrop: false } }));
   assert.equal(r.reasonCode, "OVER_CAP");
+});
+
+test("the cap is a total: earlier purchases count against it", () => {
+  // $136 already spent with a $150 pass: another $68 hoodie would make $204.
+  const r = decide(input({ identity: { tier: "signed", agentBlocked: false, pass: { ...validPass, spentCents: 13600 } } }));
+  assert.equal(r.decision, "blocked");
+  assert.equal(r.reasonCode, "OVER_CAP");
+  assert.equal(r.reason, "Over the customer's $150 cap ($136 already spent)");
+  assert.equal(r.checks.find((c) => c.id === "cap")?.detail, "$204 of $150 cap");
+
+  const fits = decide(input({ identity: { tier: "signed", agentBlocked: false, pass: { ...validPass, spentCents: 6800 } } }));
+  assert.equal(fits.decision, "allowed");
+  assert.equal(fits.checks.find((c) => c.id === "cap")?.detail, "$136 of $150 cap");
 });
 
 test("revoked and expired passes are blocked", () => {

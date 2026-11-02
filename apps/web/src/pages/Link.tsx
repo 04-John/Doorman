@@ -250,7 +250,7 @@ function PassCard({ pass, holder }: { pass: Pass; holder: string }) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 20, paddingTop: 16, borderTop: "1px dashed rgba(255,255,255,.22)" }}>
         <div>
-          <div style={{ fontSize: 12.5, color: "#C9CBD1" }}>Cap per purchase</div>
+          <div style={{ fontSize: 12.5, color: "#C9CBD1" }}>Spending cap</div>
           <div className="mono" style={{ fontSize: 20, fontWeight: 600, marginTop: 2 }}>
             {money(pass.capCents)}
           </div>
@@ -407,7 +407,7 @@ export default function LinkAgent() {
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", margin: 0 }}>Set limits</h1>
           <fieldset style={{ border: 0, margin: 0, padding: 0 }}>
-            <legend style={{ fontSize: 15, fontWeight: 600, marginBottom: 9, padding: 0 }}>Spending cap per purchase</legend>
+            <legend style={{ fontSize: 15, fontWeight: 600, marginBottom: 9, padding: 0 }}>Spending cap</legend>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
               {CAPS.map((c) => (
                 <Choice
@@ -453,7 +453,7 @@ export default function LinkAgent() {
             </div>
           </fieldset>
           <div style={{ padding: "14px 16px", borderRadius: 14, border: "1px solid #E4E2DC", fontSize: 15, lineHeight: 1.5, color: "#4A4D55" }}>
-            {selected.name} can buy at Static Supply for up to <b style={{ color: "#15171C" }}>{capValid ? money(capCents) : "—"} per purchase</b> until <b style={{ color: "#15171C" }}>{until}</b>. You still approve each payment in PayPal.
+            {selected.name} can spend up to <b style={{ color: "#15171C" }}>{capValid ? money(capCents) : "—"} in total</b> at Static Supply until <b style={{ color: "#15171C" }}>{until}</b>. You still approve each payment in PayPal.
           </div>
           {error && (
             <div role="alert" style={{ fontSize: 14.5, color: "#8E1B12" }}>

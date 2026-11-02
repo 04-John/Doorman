@@ -2,12 +2,13 @@
 // themselves; either way they log in with PayPal, set a cap and expiry, and the
 // agent then collects its pass token once.
 import { randomBytes } from "node:crypto";
-import { and, desc, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import type { AgentRow } from "../agents/registry.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
 import { hashPassToken } from "./identity.js";
 import type { CustomerRow } from "./sessions.js";
+import { APPROVAL_MINUTES } from "./store.js";
 
 const LINK_REQUEST_MINUTES = 30;
 
@@ -41,18 +42,21 @@ export async function linkRequestView(id: string) {
   };
 }
 
-// A customer has one live pass per agent: a new one replaces the old.
-export async function issuePass(input: { agentKeyId: string; customer: CustomerRow; capCents: number; days: number }) {
-  await db
-    .update(schema.passes)
-    .set({ revokedAt: new Date() })
-    .where(
-      and(
-        eq(schema.passes.agentKeyId, input.agentKeyId),
-        eq(schema.passes.customerPayerId, input.customer.payerId),
-        isNull(schema.passes.revokedAt),
-      ),
-    );
+// A customer has one live pass per agent: a new one replaces the old. The drop
+// simulation's own passes leave the customer's alone.
+export async function issuePass(input: { agentKeyId: string; customer: CustomerRow; capCents: number; days: number; simulated?: boolean }) {
+  if (!input.simulated) {
+    await db
+      .update(schema.passes)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(schema.passes.agentKeyId, input.agentKeyId),
+          eq(schema.passes.customerPayerId, input.customer.payerId),
+          isNull(schema.passes.revokedAt),
+        ),
+      );
+  }
   const token = newPassToken();
   const [pass] = await db
     .insert(schema.passes)
@@ -62,9 +66,27 @@ export async function issuePass(input: { agentKeyId: string; customer: CustomerR
       customerPayerId: input.customer.payerId,
       capCents: input.capCents,
       expiresAt: new Date(Date.now() + input.days * 86_400_000),
+      simulated: input.simulated ?? false,
     })
     .returning();
   return { pass: pass!, token };
+}
+
+// What an agent has spent with a pass, which counts against its cap: paid or held,
+// and (when checking a new purchase) purchases still waiting for the customer's
+// approval, since those would be charged the moment the customer approves.
+export async function passSpent(passId: string, opts: { includeAwaiting: boolean; excludeOrderId?: string }): Promise<number> {
+  const counted = opts.includeAwaiting
+    ? or(
+        inArray(schema.orders.status, ["held", "charged"]),
+        and(eq(schema.orders.status, "awaiting_approval"), gt(schema.orders.createdAt, new Date(Date.now() - APPROVAL_MINUTES * 60_000))),
+      )
+    : inArray(schema.orders.status, ["held", "charged"]);
+  const [row] = await db
+    .select({ cents: sql<number>`coalesce(sum(${schema.orders.amountCents}), 0)::int` })
+    .from(schema.orders)
+    .where(and(eq(schema.orders.passId, passId), counted, opts.excludeOrderId ? ne(schema.orders.id, opts.excludeOrderId) : undefined));
+  return row?.cents ?? 0;
 }
 
 export async function approveLinkRequest(id: string, customer: CustomerRow, capCents: number, days: number) {
@@ -135,7 +157,7 @@ export async function passesFor(customer: CustomerRow) {
     })
     .from(schema.passes)
     .innerJoin(schema.agents, eq(schema.agents.keyId, schema.passes.agentKeyId))
-    .where(eq(schema.passes.customerPayerId, customer.payerId))
+    .where(and(eq(schema.passes.customerPayerId, customer.payerId), eq(schema.passes.simulated, false)))
     .orderBy(desc(schema.passes.createdAt));
 }
 

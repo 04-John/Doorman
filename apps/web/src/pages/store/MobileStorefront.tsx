@@ -130,7 +130,7 @@ export function MobileStorefront(p: MobileStorefrontProps) {
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 16, background: "#F4F3EF", fontSize: 14.5, lineHeight: 1.4, color: "#4A4D55" }}>
                 <AgentAvatar name={p.linked.agentName} size={28} />
                 <span style={{ flex: 1 }}>
-                  <b style={{ color: "#15171C", fontWeight: 600 }}>{p.linked.agentName}</b> can buy for you here, up to {money(p.linked.capCents)} per purchase.
+                  <b style={{ color: "#15171C", fontWeight: 600 }}>{p.linked.agentName}</b> can buy for you here: {money(Math.max(0, p.linked.capCents - p.linked.usedCents))} left of your {money(p.linked.capCents)} cap.
                 </span>
                 <Link to="/passes" className="m-hit" style={{ color: "#15171C", fontWeight: 600, padding: "10px 2px" }}>
                   Manage

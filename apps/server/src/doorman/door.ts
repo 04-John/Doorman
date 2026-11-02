@@ -2,6 +2,7 @@
 import { decide, type Action, type DecisionResult } from "./engine.js";
 import { recordEvent, type EventRow } from "./events.js";
 import type { Visitor } from "./identity.js";
+import { passSpent } from "./passes.js";
 import { countRequest } from "./rate.js";
 import { currentDrop, getRules, unitsInDrop, type DropRow, type ProductRow } from "./store.js";
 
@@ -29,15 +30,17 @@ export async function evaluate(visitor: Visitor, action: Action, item?: { produc
   }
 
   const dropLive = drop?.status === "live";
-  const customerAlreadyBought =
+  const [customerAlreadyBought, spentCents] = await Promise.all([
     visitor.pass && drop && dropLive && item?.product.limitedDrop
-      ? await unitsInDrop({
+      ? unitsInDrop({
           dropId: drop.id,
           productId: item.product.id,
           payer: { expected: visitor.pass.customerPayerId },
           statuses: ["awaiting_approval", "held", "charged"],
         })
-      : 0;
+      : 0,
+    visitor.pass && action !== "browse" ? passSpent(visitor.pass.id, { includeAwaiting: true }) : 0,
+  ]);
 
   const result = decide({
     action,
@@ -49,6 +52,7 @@ export async function evaluate(visitor: Visitor, action: Action, item?: { produc
             agentBlocked: visitor.agent!.blocked,
             pass: visitor.pass && {
               capCents: visitor.pass.capCents,
+              spentCents,
               expiresAt: visitor.pass.expiresAt,
               revokedAt: visitor.pass.revokedAt,
             },

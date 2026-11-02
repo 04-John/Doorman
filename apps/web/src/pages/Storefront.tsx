@@ -313,7 +313,7 @@ export default function Storefront() {
                 <div className="sf-linked">
                   <AgentAvatar name={linked.agentName} size={22} />
                   <span>
-                    <b style={{ color: "#15171C", fontWeight: 600 }}>{linked.agentName}</b> can buy for you here, up to {money(linked.capCents)} per purchase.
+                    <b style={{ color: "#15171C", fontWeight: 600 }}>{linked.agentName}</b> can buy for you here: {money(Math.max(0, linked.capCents - linked.usedCents))} left of your {money(linked.capCents)} cap.
                   </span>
                   <Link to="/passes" style={{ color: "#4A4D55", textDecoration: "underline", textUnderlineOffset: 3 }}>
                     Manage

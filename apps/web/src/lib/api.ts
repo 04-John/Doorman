@@ -87,7 +87,7 @@ export interface Explanation {
 
 export interface TranscriptEntry {
   at: string;
-  from: "customer" | "ava" | "store";
+  from: "customer" | "assistant" | "store";
   text: string;
   tool?: string;
   ok?: boolean;
@@ -98,6 +98,9 @@ export interface Transcript {
   transcript: TranscriptEntry[];
   orders: { id: string; status: OrderStatus; amountCents: number }[];
   running: boolean;
+  // The customer's assistant in the drop (Ava unless they linked another) and the customer's name.
+  agent: string;
+  customer: string | null;
 }
 
 export interface Policy {

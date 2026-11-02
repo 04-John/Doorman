@@ -303,7 +303,7 @@ export function DetailPanel({ eventId, perCustomer, onClose, onChanged, sheet = 
                   <div style={{ height: 6, borderRadius: 3, background: "#E4E2DC", marginTop: 8, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${Math.min(100, (used / detail.pass.capCents) * 100)}%`, background: "#15171C" }} />
                   </div>
-                  <div style={{ fontSize: 13, color: "#6B6E76", marginTop: 8 }}>Cap {money(detail.pass.capCents)} per purchase</div>
+                  <div style={{ fontSize: 13, color: "#6B6E76", marginTop: 8 }}>Spending cap {money(detail.pass.capCents)} in total</div>
                 </div>
               )}
 

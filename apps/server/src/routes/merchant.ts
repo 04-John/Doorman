@@ -18,7 +18,7 @@ import { currentDrop, expireStaleApprovals, getProduct, getRules, resetDrop, sav
 import { paypal } from "../paypal/client.js";
 import { Gate, shared } from "../lib/bounded.js";
 import { perMinute } from "../lib/limits.js";
-import { avaTranscript, runDrop, simulationRunning } from "../sim/run.js";
+import { latestTranscript, runDrop, simulationRunning } from "../sim/run.js";
 
 // The drop the dashboard shows: the latest one, unless it was reset.
 async function shownDrop(): Promise<DropRow | undefined> {
@@ -173,16 +173,16 @@ function merchant() {
   return merchantInfo;
 }
 
-// Every open dashboard refreshes its totals and Ava's conversation; they share one
-// database read a second however many are open.
+// Every open dashboard refreshes its totals and the assistant's conversation; they
+// share one database read a second however many are open.
 const sharedSummary = shared(1_000, summary);
 const sharedTranscript = shared(1_000, async () => {
-  const transcript = avaTranscript();
+  const { transcript, agent, customer } = latestTranscript();
   const orderIds = transcript.flatMap((t) => (t.orderId ? [t.orderId] : []));
   const orders = orderIds.length
     ? await db.select({ id: schema.orders.id, status: schema.orders.status, amountCents: schema.orders.amountCents }).from(schema.orders).where(inArray(schema.orders.id, orderIds))
     : [];
-  return { transcript, orders, running: simulationRunning() };
+  return { transcript, orders, running: simulationRunning(), agent, customer };
 });
 
 // Live feed connections: each is held open, so there's a ceiling. The JSON for an
@@ -287,7 +287,7 @@ export const merchantRoutes = new Hono()
     return c.json({ ok: true });
   })
 
-  // Ava's conversation, with the latest status of any order she created.
+  // The assistant's conversation, with the latest status of any order it created.
   .get("/api/drop/transcript", merchantOnly, async (c) => c.json(await sharedTranscript()))
 
   .post("/api/agents/:keyId/block", merchantOnly, perMinute(30), async (c) => {

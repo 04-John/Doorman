@@ -1,5 +1,5 @@
 // The dashboard as a phone app: Live (the drop at a glance), Activity (every request),
-// Ava's conversation as its own screen, and request details in a bottom sheet.
+// the assistant's conversation as its own screen, and request details in a bottom sheet.
 // All data and actions come from Dashboard.tsx; this file only lays them out.
 import { useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -9,7 +9,7 @@ import { backIcon, MerchantTabBar, MerchantTopBar } from "../../mobile/chrome";
 import { Spinner } from "../../ui/bits";
 import { ProductPhoto } from "../../ui/product";
 import { AgentAvatar, DECISION, ICON, Icon, IDENTITY } from "../../ui/status";
-import { MessageView, toMessages } from "./AvaChat";
+import { chatPeople, MessageView, toMessages } from "./AvaChat";
 import { DetailPanel } from "./DetailPanel";
 import type { Phase } from "./DropStrip";
 import { MONEY_COLOUR, type Row } from "./rows";
@@ -150,8 +150,9 @@ function Live(p: MobileDashboardProps & { openChat: () => void }) {
     { key: "blocked" as const, count: k?.blocked ?? 0 },
   ];
   const messages = transcript ? toMessages(transcript) : [];
+  const who = chatPeople(transcript);
   const last = messages.at(-1);
-  const preview = !last ? "Ava hasn't arrived yet. Her messages appear here when the drop starts." : last.kind === "store" ? `${last.call} · ${last.text}` : last.text;
+  const preview = !last ? `${who.agent} hasn't arrived yet. Messages appear here when the drop starts.` : last.kind === "store" ? `${last.call} · ${last.text}` : last.text;
   const pill = phase === "live" ? { label: "LIVE", bg: "rgba(255,138,122,.16)", fg: "#FFB4A9" } : phase === "soldout" ? { label: "SOLD OUT", bg: "#FFFFFF", fg: "#15171C" } : { label: "READY", bg: "rgba(255,255,255,.12)", fg: "#FFFFFF" };
 
   return (
@@ -294,10 +295,10 @@ function Live(p: MobileDashboardProps & { openChat: () => void }) {
           </section>
 
           <button type="button" onClick={p.openChat} className="m-card m-tap" style={{ display: "flex", gap: 12, alignItems: "center", padding: "14px 16px", textAlign: "left", color: "#15171C" }}>
-            <AgentAvatar name="Ava" size={42} />
+            <AgentAvatar name={who.agent} size={42} />
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 15.5, fontWeight: 600 }}>Ava's conversation</span>
+                <span style={{ fontSize: 15.5, fontWeight: 600 }}>{who.agent}'s conversation</span>
                 {phase === "live" && transcript?.running && (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, letterSpacing: ".06em", color: "#B42318" }}>
                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#B42318", animation: "dm-pulse 1.6s infinite" }} />
@@ -403,44 +404,45 @@ function Activity(p: MobileDashboardProps) {
 
 function Chat({ transcript, live, onBack }: { transcript: Transcript | null; live: boolean; onBack: () => void }) {
   const messages = transcript ? toMessages(transcript) : [];
+  const who = chatPeople(transcript);
   const scroller = useRef<HTMLDivElement>(null);
   const last = transcript?.transcript.at(-1);
-  const typing = live && !!transcript?.running && !!last && last.from !== "ava";
+  const typing = live && !!transcript?.running && !!last && last.from !== "assistant";
   useEffect(() => {
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length, typing]);
 
   return (
-    <div className="m-push" role="dialog" aria-label="Ava's conversation">
+    <div className="m-push" role="dialog" aria-label={`${who.agent}'s conversation`}>
       <header style={{ flex: "none", padding: "calc(8px + var(--m-safe-t)) 12px 8px 6px", display: "flex", alignItems: "center", gap: 4, borderBottom: "1px solid #E4E2DC", background: "rgba(250,249,246,.94)" }}>
         <button type="button" onClick={onBack} className="m-tap" style={{ height: 44, padding: "0 8px", border: 0, background: "transparent", display: "flex", alignItems: "center", gap: 2, fontSize: 16, fontWeight: 500, color: "#15171C" }}>
           {backIcon}
           Live
         </button>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", marginRight: 62 }}>
-          <span style={{ fontSize: 16, fontWeight: 600 }}>Ava's conversation</span>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>{who.agent}'s conversation</span>
           <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#6B6E76" }}>
             {live && transcript?.running && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#B42318", animation: "dm-pulse 1.6s infinite" }} />}
-            Shopping for John D.
+            Shopping for {who.short}
           </span>
         </div>
       </header>
       <div ref={scroller} aria-live="polite" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 20px", display: "flex", flexDirection: "column", gap: 14, scrollBehavior: "smooth" }}>
         {messages.length === 0 && (
           <div style={{ margin: "auto 0", textAlign: "center", padding: "0 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>Ava hasn't arrived yet</div>
-            <div style={{ fontSize: 15, lineHeight: 1.5, color: "#4A4D55" }}>When the drop starts, Ava's messages and every reply from the store appear here.</div>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>{who.agent} hasn't arrived yet</div>
+            <div style={{ fontSize: 15, lineHeight: 1.5, color: "#4A4D55" }}>When the drop starts, {who.agent}'s messages and every reply from the store appear here.</div>
           </div>
         )}
         {messages.map((m, i) => (
           <div key={i} className="m-fade" style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <MessageView m={m} />
+            <MessageView m={m} who={who} />
           </div>
         ))}
         {typing && (
           <div style={{ alignSelf: "flex-end", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#6B6E76" }}>
-            Ava is thinking
+            {who.agent} is thinking
             <span style={{ display: "flex", gap: 3, padding: "10px 12px", borderRadius: 14, background: "#15171C" }}>
               {[0, 0.15, 0.3].map((delay) => (
                 <span key={delay} style={{ width: 5, height: 5, borderRadius: "50%", background: "#FFFFFF", animation: `dm-dot 1.1s ${delay}s infinite` }} />
@@ -450,7 +452,7 @@ function Chat({ transcript, live, onBack }: { transcript: Transcript | null; liv
         )}
       </div>
       <div style={{ flex: "none", padding: "12px 20px calc(14px + var(--m-safe-b))", borderTop: "1px solid #E4E2DC", fontSize: 13, lineHeight: 1.4, color: "#6B6E76", textAlign: "center" }}>
-        Read-only. Ava talks to your store through its tools; Doorman checks every call.
+        Read-only. {who.agent} talks to your store through its tools; Doorman checks every call.
       </div>
     </div>
   );

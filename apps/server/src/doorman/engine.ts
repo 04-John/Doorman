@@ -15,7 +15,10 @@ export interface Check {
 }
 
 export interface PassInfo {
+  // The most the agent may spend over the life of the pass.
   capCents: number;
+  // Already spent with it: paid, held, or waiting for the customer's approval.
+  spentCents: number;
   expiresAt: Date;
   revokedAt: Date | null;
 }
@@ -146,10 +149,15 @@ export function decide(input: DecisionInput): DecisionResult {
     return result("allowed", "SIGNED_OK", "Signed agent");
   }
 
-  checks.cap = { id: "cap", status: "pass", detail: `${money(amount)} of a ${money(pass!.capCents)} cap` };
-  if (amount > pass!.capCents) {
+  const { capCents, spentCents } = pass!;
+  checks.cap = { id: "cap", status: "pass", detail: `${money(spentCents + amount)} of ${money(capCents)} cap` };
+  if (spentCents + amount > capCents) {
     checks.cap.status = "fail";
-    return result("blocked", "OVER_CAP", `Over the customer's ${money(pass!.capCents)} cap`);
+    return result(
+      "blocked",
+      "OVER_CAP",
+      spentCents ? `Over the customer's ${money(capCents)} cap (${money(spentCents)} already spent)` : `Over the customer's ${money(capCents)} cap`,
+    );
   }
 
   return result("allowed", "VERIFIED_OK", `Verified customer, within ${money(pass!.capCents)} cap`);

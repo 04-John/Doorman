@@ -59,9 +59,13 @@ export const passes = pgTable("passes", {
   tokenHash: text("token_hash").notNull().unique(),
   agentKeyId: text("agent_key_id").notNull().references(() => agents.keyId),
   customerPayerId: text("customer_payer_id").notNull().references(() => customers.payerId),
+  // A total for the life of the pass, not a limit per purchase.
   capCents: integer("cap_cents").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  // The drop simulation's own stand-in (Juniper's revoked pass): hidden from the
+  // customer's passes and never replaces one they gave.
+  simulated: boolean("simulated").notNull().default(false),
   createdAt: createdAt(),
 });
 

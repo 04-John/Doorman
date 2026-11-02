@@ -19,14 +19,14 @@ It's a test account with play money. Use a private or incognito window so your o
 
 The merchant side (**Dashboard**, **Rules**, **Settings**) asks for the merchant password. It's in the testing instructions of the Devpost submission. Customer pages don't need it.
 
-1. **Give an AI agent a pass, as the customer.** Open the [storefront](https://doorman-ppw2.onrender.com/store) and click **Let my AI assistant buy it**. Log in with PayPal using the sandbox account, so PayPal confirms you're a real, verified person. Choose **Ava**, set a spending cap and how long the pass lasts, and click **Create pass**. (If the store already offers **Ask Ava to buy it**, someone linked her earlier; use **Link an agent** in the top bar to give her a fresh pass.)
+1. **Give an AI agent a pass, as the customer.** Open the [storefront](https://doorman-ppw2.onrender.com/store) and click **Let my AI assistant buy it**. Log in with PayPal using the sandbox account, so PayPal confirms you're a real, verified person. Choose **Ava** (or Milo or Juniper: the drop sends whichever agent you linked last), set a spending cap and how long the pass lasts, and click **Create pass**. The cap is a total for the life of the pass. (If the store already offers **Ask Ava to buy it**, someone linked her earlier; use **Link an agent** in the top bar to give her a fresh pass.)
 2. **Run a limited drop, as the merchant.** Open the [dashboard](https://doorman-ppw2.onrender.com/dashboard) and click **Run the drop**. A 50-hoodie drop opens, and for about a minute and a half dozens of scalper bots and three AI agents hit the store:
    - Unsigned bots can browse but not buy, and the swarm gets throttled.
-   - Juniper's revoked pass is refused.
+   - Juniper's revoked pass is refused (Milo plays this part if you linked Juniper).
    - Kestrel signs its requests but has no customer linked, so the customer would have to step up and confirm.
-   - Ava, driven by Gemini, shops with the pass you just gave her. She asks for two hoodies, is told the limit is one, and adapts.
+   - Your agent (Ava, unless you linked another), driven by Gemini, shops with the pass you just gave it. It asks for two hoodies, is told the limit is one, and adapts. If the pass is revoked or its cap is used up, Doorman turns it away and it tells you why.
 3. **See why.** Click any row in the live traffic table for the checks Doorman ran and a plain-English explanation of the decision. For orders, the panel also shows the PayPal IDs and the webhook events PayPal sent.
-4. **Approve Ava's purchase, as the customer.** Open the approval link in **Ava's conversation**, or go back to the store and click **Review and approve**. Click **Pay with PayPal** and approve with the same sandbox account. Doorman holds the money, checks that the person paying is the one who gave Ava her pass and that the drop limit holds, and only then charges.
+4. **Approve the purchase, as the customer.** Open the approval link in the agent's conversation on the dashboard, or go back to the store and click **Review and approve**. Click **Pay with PayPal** and approve with the same sandbox account. Doorman holds the money, checks that the person paying is the one who gave the agent its pass, that the pass's cap and the drop limit still hold, and only then charges.
 5. **Try to buy a second one.** On the store, the drop now shows **You've got yours**, and if Ava is asked again Doorman stops her: one per customer.
 6. **Change the rules.** On **Rules**, write a rule in plain English, for example *"Two hoodies per customer, and block unknown bots completely."* Gemini turns it into exact settings, and nothing changes until you review and save them.
 
@@ -34,6 +34,7 @@ Good to know:
 
 - The demo and the sandbox account are shared. If the store already says **You've got yours**, someone else used the account in this drop: click **Run the drop** (or **Run it again**) for a fresh one.
 - Approval links expire after 15 minutes.
+- A pass's spending cap counts everything the agent has bought with it, including purchases waiting for approval. Once it's used up, or if you revoke the pass, the agent is refused in the next drop: link it again for a fresh pass.
 - PayPal's sandbox checkout window can take 10 to 30 seconds to load the first time.
 - Static Supply is a made-up store.
 

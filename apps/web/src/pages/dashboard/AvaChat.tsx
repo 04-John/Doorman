@@ -1,21 +1,42 @@
-// Ava's conversation: John's request, every store reply, and Ava's message back.
+// The assistant's conversation in the drop (Ava, unless the customer linked another):
+// the customer's request, every store reply, and the assistant's message back.
 import { useEffect, useRef } from "react";
 import type { Transcript, TranscriptEntry } from "../../lib/api";
 import { clock, money } from "../../lib/format";
 import { ICON, Icon } from "../../ui/status";
 
 export type Message =
-  | { kind: "john"; at: string; text: string }
+  | { kind: "customer"; at: string; text: string }
   | { kind: "store"; at: string; call: string; ok: boolean; text: string }
   | { kind: "note"; text: string; tone: "adapt" | "paid" | "released" }
-  | { kind: "ava"; at: string; text: string; link: string | null };
+  | { kind: "assistant"; at: string; text: string; link: string | null };
+
+// Who's talking, as the conversation names them.
+export interface People {
+  agent: string;
+  // "John", or "Customer" when nobody has logged in.
+  first: string;
+  // "John D.", or "the customer".
+  short: string;
+}
+
+export function chatPeople(t: Transcript | null): People {
+  const name = t?.customer?.trim() || null;
+  return {
+    agent: t?.agent ?? "Ava",
+    first: name?.split(/\s+/)[0] ?? "Customer",
+    short: name ? name.replace(/^(\S+)\s+(\S).*$/, "$1 $2.") : "the customer",
+  };
+}
+
+const firstOrTheCustomer = (who: People) => (who.first === "Customer" ? "the customer" : who.first);
 
 interface StoreTurn {
   request: Record<string, unknown>;
   response: Record<string, unknown>;
 }
 
-function describe(entry: TranscriptEntry, turn: StoreTurn): { call: string; text: string } {
+function describe(entry: TranscriptEntry, turn: StoreTurn, who: People): { call: string; text: string } {
   const { request, response } = turn;
   const quantity = typeof request.quantity === "number" ? ` ×${request.quantity}` : "";
   const query = typeof request.query === "string" ? ` "${request.query.toLowerCase()}"` : "";
@@ -27,16 +48,18 @@ function describe(entry: TranscriptEntry, turn: StoreTurn): { call: string; text
     return { call, text: hit ? `${hit.name} · ${hit.price}${hit.limitedDrop ? " · drop live" : ""}` : "No matching products" };
   }
   if (entry.tool === "add_to_cart") return { call, text: `Cart created · ${String(response.total ?? "")}` };
-  if (entry.tool === "checkout") return { call, text: "Approval link ready · nothing charged until John approves" };
+  if (entry.tool === "checkout") return { call, text: `Approval link ready · nothing charged until ${firstOrTheCustomer(who)} approves` };
   return { call, text: "OK" };
 }
 
-export function toMessages({ transcript, orders }: Transcript): Message[] {
+export function toMessages(t: Transcript): Message[] {
+  const { transcript, orders } = t;
+  const who = chatPeople(t);
   const messages: Message[] = [];
   let lastRefusedCart: number | null = null;
   for (const entry of transcript) {
     if (entry.from === "customer") {
-      messages.push({ kind: "john", at: entry.at, text: entry.text });
+      messages.push({ kind: "customer", at: entry.at, text: entry.text });
     } else if (entry.from === "store") {
       let turn: StoreTurn;
       try {
@@ -46,20 +69,21 @@ export function toMessages({ transcript, orders }: Transcript): Message[] {
       }
       const quantity = typeof turn.request.quantity === "number" ? turn.request.quantity : null;
       if (entry.tool === "add_to_cart" && entry.ok && lastRefusedCart != null && quantity != null && quantity !== lastRefusedCart) {
-        messages.push({ kind: "note", tone: "adapt", text: `Ava adapts: ${quantity} hoodie${quantity === 1 ? "" : "s"} instead of ${lastRefusedCart}` });
+        messages.push({ kind: "note", tone: "adapt", text: `${who.agent} adapts: ${quantity} hoodie${quantity === 1 ? "" : "s"} instead of ${lastRefusedCart}` });
       }
       lastRefusedCart = entry.tool === "add_to_cart" && !entry.ok ? quantity : entry.tool === "add_to_cart" ? null : lastRefusedCart;
-      messages.push({ kind: "store", at: entry.at, ...describe(entry, turn), ok: entry.ok ?? false });
+      messages.push({ kind: "store", at: entry.at, ...describe(entry, turn, who), ok: entry.ok ?? false });
 
       const order = entry.orderId ? orders.find((o) => o.id === entry.orderId) : undefined;
-      if (order?.status === "charged") messages.push({ kind: "note", tone: "paid", text: `John approved in PayPal · ${money(order.amountCents)} charged` });
+      if (order?.status === "charged") messages.push({ kind: "note", tone: "paid", text: `${who.first} approved in PayPal · ${money(order.amountCents)} charged` });
       if (order?.status === "released") messages.push({ kind: "note", tone: "released", text: "Payment released · no money was taken" });
     } else {
-      const link = /https?:\/\/\S+/.exec(entry.text)?.[0]?.replace(/[).,]+$/, "") ?? null;
-      messages.push({ kind: "ava", at: entry.at, text: link ? entry.text.replace(link, "").replace(/\s+([:.!])?\s*$/, "$1").trim() : entry.text, link });
+      // Exactly the approval link, without anything the AI put around it (a full stop, brackets, markdown).
+      const link = /https?:\/\/[^\s()<>[\]"'`*]+\/approve\/[A-Za-z0-9_-]+/.exec(entry.text)?.[0] ?? null;
+      messages.push({ kind: "assistant", at: entry.at, text: link ? entry.text.replace(link, "").replace(/\s+([:.!])?\s*$/, "$1").trim() : entry.text, link });
     }
   }
-  // A charge shows after Ava's message, the way it happened.
+  // A charge shows after the assistant's message, the way it happened.
   const paid = messages.findIndex((m) => m.kind === "note" && m.tone !== "adapt");
   if (paid >= 0) messages.push(...messages.splice(paid, 1));
   return messages;
@@ -73,12 +97,14 @@ const NOTE_STYLE = {
 
 const meta = { display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6B6E76" } as const;
 
-export function MessageView({ m }: { m: Message }) {
-  if (m.kind === "john")
+export function MessageView({ m, who }: { m: Message; who: People }) {
+  if (m.kind === "customer")
     return (
       <>
         <div style={meta}>
-          <span style={{ fontWeight: 600, color: "#4A4D55" }}>John → Ava</span>
+          <span style={{ fontWeight: 600, color: "#4A4D55" }}>
+            {who.first} → {who.agent}
+          </span>
           <span className="mono">{clock(m.at)}</span>
         </div>
         <div style={{ alignSelf: "flex-start", maxWidth: "92%", padding: "10px 13px", borderRadius: "4px 14px 14px 14px", background: "#F1F0EC", fontSize: 14.5, lineHeight: 1.45 }}>{m.text}</div>
@@ -88,7 +114,7 @@ export function MessageView({ m }: { m: Message }) {
     return (
       <>
         <div style={meta}>
-          <span style={{ fontWeight: 600, color: "#4A4D55" }}>Store → Ava</span>
+          <span style={{ fontWeight: 600, color: "#4A4D55" }}>Store → {who.agent}</span>
           <span className="mono">{clock(m.at)}</span>
         </div>
         <div
@@ -140,7 +166,9 @@ export function MessageView({ m }: { m: Message }) {
     <>
       <div style={meta}>
         <span className="mono">{clock(m.at)}</span>
-        <span style={{ fontWeight: 600, color: "#4A4D55" }}>Ava → John</span>
+        <span style={{ fontWeight: 600, color: "#4A4D55" }}>
+          {who.agent} → {who.first}
+        </span>
       </div>
       <div style={{ alignSelf: "flex-end", maxWidth: "92%", padding: "10px 13px", borderRadius: "14px 4px 14px 14px", background: "#15171C", color: "#FFFFFF", fontSize: 14.5, lineHeight: 1.45 }}>
         {m.text}
@@ -149,7 +177,7 @@ export function MessageView({ m }: { m: Message }) {
             href={m.link}
             target="_blank"
             rel="noreferrer"
-            title="Open John's approval page"
+            title={`Open ${firstOrTheCustomer(who)}'s approval page`}
             style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 7, padding: "7px 9px", borderRadius: 8, background: "rgba(255,255,255,.1)", fontFamily: "var(--mono)", fontSize: 12.5, color: "#F6E3B4", wordBreak: "break-all" }}
           >
             <Icon d={ICON.link} color="#F6E3B4" size={12} width={1.5} />
@@ -163,9 +191,10 @@ export function MessageView({ m }: { m: Message }) {
 
 export function AvaChat({ transcript, live, open, onToggle }: { transcript: Transcript | null; live: boolean; open: boolean; onToggle: () => void }) {
   const messages = transcript ? toMessages(transcript) : [];
+  const who = chatPeople(transcript);
   const scroller = useRef<HTMLDivElement>(null);
   const last = transcript?.transcript.at(-1);
-  const typing = live && !!transcript?.running && !!last && last.from !== "ava";
+  const typing = live && !!transcript?.running && !!last && last.from !== "assistant";
 
   useEffect(() => {
     const el = scroller.current;
@@ -177,11 +206,11 @@ export function AvaChat({ transcript, live, open, onToggle }: { transcript: Tran
       <button
         type="button"
         onClick={onToggle}
-        aria-label="Show Ava's conversation"
+        aria-label={`Show ${who.agent}'s conversation`}
         style={{ width: 48, flex: "none", border: "1px solid #E4E2DC", borderRadius: 12, background: "#FFFFFF", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "12px 0" }}
       >
-        <span style={{ width: 30, height: 30, borderRadius: 8, background: "#EADFCB", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700 }}>A</span>
-        <span style={{ writingMode: "vertical-rl", fontSize: 14, fontWeight: 600, color: "#15171C" }}>Ava's conversation</span>
+        <span style={{ width: 30, height: 30, borderRadius: 8, background: "#EADFCB", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700 }}>{who.agent[0]}</span>
+        <span style={{ writingMode: "vertical-rl", fontSize: 14, fontWeight: 600, color: "#15171C" }}>{who.agent}'s conversation</span>
         {messages.length > 0 && (
           <span style={{ minWidth: 22, height: 22, padding: "0 5px", borderRadius: 11, background: "#15171C", color: "#FFFFFF", font: "600 12px var(--mono)", display: "grid", placeItems: "center" }}>{messages.length}</span>
         )}
@@ -189,12 +218,12 @@ export function AvaChat({ transcript, live, open, onToggle }: { transcript: Tran
     );
 
   return (
-    <aside aria-label="Ava's conversation" className="card" style={{ width: 340, flex: "none", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <aside aria-label={`${who.agent}'s conversation`} className="card" style={{ width: 340, flex: "none", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ flex: "none", padding: "11px 10px 11px 16px", borderBottom: "1px solid #E4E2DC", display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ width: 32, height: 32, flex: "none", borderRadius: 8, background: "#EADFCB", display: "grid", placeItems: "center", fontSize: 14, fontWeight: 700 }}>A</span>
+        <span style={{ width: 32, height: 32, flex: "none", borderRadius: 8, background: "#EADFCB", display: "grid", placeItems: "center", fontSize: 14, fontWeight: 700 }}>{who.agent[0]}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 15, fontWeight: 600 }}>Ava's conversation</span>
+            <span style={{ fontSize: 15, fontWeight: 600 }}>{who.agent}'s conversation</span>
             {live && transcript?.running && (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", color: "#B42318" }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#B42318", animation: "dm-pulse 1.6s infinite" }} />
@@ -202,7 +231,7 @@ export function AvaChat({ transcript, live, open, onToggle }: { transcript: Tran
               </span>
             )}
           </div>
-          <div style={{ fontSize: 12.5, color: "#6B6E76", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Gemini agent shopping for John D. through the store's tools</div>
+          <div style={{ fontSize: 12.5, color: "#6B6E76", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Gemini agent shopping for {who.short} through the store's tools</div>
         </div>
         <button type="button" onClick={onToggle} aria-label="Hide conversation" className="btn-ghost" style={{ width: 34, height: 34, flex: "none", border: 0, borderRadius: 8, background: "transparent", display: "grid", placeItems: "center" }}>
           <Icon d={ICON.chevronRight} color="#4A4D55" width={1.8} />
@@ -214,18 +243,18 @@ export function AvaChat({ transcript, live, open, onToggle }: { transcript: Tran
             <div style={{ width: 48, height: 48, borderRadius: 12, border: "1.5px dashed #C9C6BD", display: "grid", placeItems: "center" }}>
               <Icon d="M2.5 4.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v4.5a2 2 0 0 1-2 2H7l-3 2.5v-2.5h0a2 2 0 0 1-1.5-2z" color="#8E919A" size={22} width={1.4} />
             </div>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Ava hasn't arrived yet</div>
-            <div style={{ fontSize: 14, lineHeight: 1.5, color: "#4A4D55" }}>When the drop starts, Ava's messages and every reply from the store appear here.</div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>{who.agent} hasn't arrived yet</div>
+            <div style={{ fontSize: 14, lineHeight: 1.5, color: "#4A4D55" }}>When the drop starts, {who.agent}'s messages and every reply from the store appear here.</div>
           </div>
         )}
         {messages.map((m, i) => (
           <div key={i} style={{ display: "flex", flexDirection: "column", gap: 5, animation: "dm-fade .35s ease both" }}>
-            <MessageView m={m} />
+            <MessageView m={m} who={who} />
           </div>
         ))}
         {typing && (
           <div style={{ alignSelf: "flex-end", display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#6B6E76" }}>
-            Ava is thinking
+            {who.agent} is thinking
             <span style={{ display: "flex", gap: 3, padding: "9px 11px", borderRadius: 12, background: "#15171C" }}>
               {[0, 0.15, 0.3].map((delay) => (
                 <span key={delay} style={{ width: 5, height: 5, borderRadius: "50%", background: "#FFFFFF", animation: `dm-dot 1.1s ${delay}s infinite` }} />

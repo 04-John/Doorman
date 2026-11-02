@@ -9,6 +9,7 @@ import type { EventAction } from "../db/schema.js";
 import { demoAgentByKeyId } from "../sim/demo-agents.js";
 import { recordEvent } from "./events.js";
 import { oneAtATime } from "./locks.js";
+import { passSpent } from "./passes.js";
 import type { CustomerRow } from "./sessions.js";
 import { APPROVAL_EXPIRED, APPROVAL_MINUTES, endDrop, getProduct, getRules, reserveStock, unitsInDrop } from "./store.js";
 
@@ -170,7 +171,18 @@ async function finishApproval(token: string, sessionCustomer: CustomerRow | null
     return approvalView(token);
   }
 
-  // 3. Drop rules, now that we know exactly who paid.
+  // 3. The pass's spending cap, counting what it has already paid for. Checked at
+  //    checkout too; this catches two purchases that were waiting at the same time.
+  if (order.passId) {
+    const [pass] = await db.select({ capCents: schema.passes.capCents }).from(schema.passes).where(eq(schema.passes.id, order.passId));
+    const spent = await passSpent(order.passId, { includeAwaiting: false, excludeOrderId: order.id });
+    if (pass && spent + order.amountCents > pass.capCents) {
+      order = await release(order, "OVER_CAP", `Over the pass's ${money(pass.capCents)} spending cap (${money(spent)} already spent)`, log("release", "blocked"));
+      return approvalView(token);
+    }
+  }
+
+  // 4. Drop rules, now that we know exactly who paid.
   if (product.limitedDrop && order.dropId) {
     const { policy } = await getRules();
     const already = await unitsInDrop({
@@ -192,7 +204,7 @@ async function finishApproval(token: string, sessionCustomer: CustomerRow | null
     if (left === 0) await endDrop(order.dropId);
   }
 
-  // 4. Charge.
+  // 5. Charge.
   const capture = await captureAuthorization(order.authorizationId!, `capture-${order.id}`);
   order = await update(order, { status: "charged", captureId: capture.id });
   await log("charge", "allowed")("CHARGED", `Charged ${money(order.amountCents)}`);
