@@ -12,9 +12,23 @@ import { DetailPanel } from "./DetailPanel";
 import { DropStrip, type Phase } from "./DropStrip";
 import { MobileDashboard } from "./MobileDashboard";
 import { moneyAfter, toRow, type Row } from "./rows";
-import { TrafficGrid } from "./TrafficGrid";
 
 const FRESH_MS = 2700;
+
+// AG Grid is most of the dashboard's download and only the desktop layout uses it,
+// so it's a separate file, fetched while the dashboard's first data loads. Phones never fetch it.
+type Grid = typeof import("./TrafficGrid").TrafficGrid;
+let loadedGrid: Grid | null = null;
+const loadGrid = () => import("./TrafficGrid").then((m) => (loadedGrid = m.TrafficGrid));
+
+function useGrid(wanted: boolean): Grid | null {
+  const [grid, setGrid] = useState(() => loadedGrid);
+  useEffect(() => {
+    // A component is a function, so it's wrapped: React would call a bare one as an updater.
+    if (wanted && !grid) void loadGrid().then((g) => setGrid(() => g));
+  }, [wanted, grid]);
+  return grid;
+}
 
 function BootSkeleton() {
   return (
@@ -93,6 +107,7 @@ export default function Dashboard() {
   const summaryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const toast = useToast();
   const mobile = useIsMobile();
+  const TrafficGrid = useGrid(!mobile);
 
   const refreshSummary = useCallback(async () => setSummary(await api.dashboard()), []);
 
@@ -284,7 +299,7 @@ export default function Dashboard() {
       <MerchantTopBar />
       <DropStrip summary={summary} phase={phase} perCustomer={perCustomer} now={now} rps={rps} running={running} onRun={run} onReset={reset} />
 
-      {booting ? (
+      {booting || !TrafficGrid ? (
         <BootSkeleton />
       ) : (
         <main style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 14, padding: "18px 24px 20px" }}>
