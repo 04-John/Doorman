@@ -349,7 +349,8 @@ function Activity(p: MobileDashboardProps) {
           {rows.length} requests · newest first
         </div>
       </div>
-      <div className="m-hscroll" role="group" aria-label="Filter by decision" style={{ gap: 8, padding: "2px 20px" }}>
+      {/* Padding (taken back by the margin) leaves room for the chips' 44px touch areas inside the scroller. */}
+      <div className="m-hscroll" role="group" aria-label="Filter by decision" style={{ gap: 8, padding: "5px 20px", margin: "-3px 0" }}>
         {(["all", ...DECISIONS] as const).map((d) => {
           const on = decision === d;
           return (
