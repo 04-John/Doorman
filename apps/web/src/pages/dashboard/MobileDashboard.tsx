@@ -317,7 +317,7 @@ function Live(p: MobileDashboardProps & { openChat: () => void }) {
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
             <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", margin: 0 }}>Latest</h2>
-            <Link to="/dashboard?view=activity" style={{ fontSize: 15, fontWeight: 600, color: "#4A4D55", padding: "12px 4px" }}>
+            <Link to="/dashboard?view=activity" className="m-hit" style={{ fontSize: 15, fontWeight: 600, color: "#4A4D55", padding: "12px 4px" }}>
               See all
             </Link>
           </div>
@@ -358,7 +358,7 @@ function Activity(p: MobileDashboardProps) {
               type="button"
               aria-pressed={on}
               onClick={() => p.setDecision(d)}
-              className="m-tap"
+              className="m-tap m-hit"
               style={{ height: 38, padding: "0 14px", borderRadius: 999, border: `1px solid ${on ? "#15171C" : "#E4E2DC"}`, background: on ? "#15171C" : "#FFFFFF", color: on ? "#FFFFFF" : "#15171C", fontSize: 14.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 7 }}
             >
               {d === "all" ? "All" : DECISION[d].label}
@@ -374,7 +374,7 @@ function Activity(p: MobileDashboardProps) {
           {TIERS.map((t) => {
             const on = tier === t.value;
             return (
-              <button key={t.value} type="button" aria-pressed={on} onClick={() => p.setTier(t.value)} style={{ height: 36, border: 0, borderRadius: 9, background: on ? "#FFFFFF" : "transparent", boxShadow: on ? "0 1px 3px rgba(21,23,28,.14)" : "none", color: "#15171C", fontSize: 13.5, fontWeight: on ? 600 : 500 }}>
+              <button key={t.value} type="button" aria-pressed={on} onClick={() => p.setTier(t.value)} className="m-hit" style={{ height: 36, border: 0, borderRadius: 9, background: on ? "#FFFFFF" : "transparent", boxShadow: on ? "0 1px 3px rgba(21,23,28,.14)" : "none", color: "#15171C", fontSize: 13.5, fontWeight: on ? 600 : 500 }}>
                 {t.label}
               </button>
             );

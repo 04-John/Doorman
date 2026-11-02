@@ -292,6 +292,31 @@
   }
 }
 
+/* Touch areas of at least 44×44 on phones, without changing how controls look. */
+@media (max-width: 640px) {
+  .m-hit,
+  .sf-cart .sf-cart-close,
+  .sf-cart .sf-qty button,
+  .sf-cart .sf-cart-remove {
+    position: relative;
+  }
+  .m-hit::after,
+  .sf-cart .sf-cart-close::after,
+  .sf-cart .sf-qty button::after,
+  .sf-cart .sf-cart-remove::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  .m-merchant .su-step {
+    min-height: 44px;
+  }
+}
+
 /* Request detail as a bottom sheet. */
 .m-sheet-grab {
   display: flex;

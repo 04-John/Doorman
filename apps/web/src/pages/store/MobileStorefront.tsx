@@ -132,7 +132,7 @@ export function MobileStorefront(p: MobileStorefrontProps) {
                 <span style={{ flex: 1 }}>
                   <b style={{ color: "#15171C", fontWeight: 600 }}>{p.linked.agentName}</b> can buy for you here, up to {money(p.linked.capCents)} per purchase.
                 </span>
-                <Link to="/passes" style={{ color: "#15171C", fontWeight: 600, padding: "10px 2px" }}>
+                <Link to="/passes" className="m-hit" style={{ color: "#15171C", fontWeight: 600, padding: "10px 2px" }}>
                   Manage
                 </Link>
               </div>
@@ -207,7 +207,7 @@ export function MobileStorefront(p: MobileStorefrontProps) {
 
       <footer className="m-pad" style={{ padding: "26px 20px 24px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, fontSize: 13, color: "#6B6E76" }}>
         <span>© Static Supply · sandbox demo store</span>
-        <Link to="/" style={{ color: "#4A4D55", fontWeight: 500 }}>
+        <Link to="/" className="m-hit" style={{ color: "#4A4D55", fontWeight: 500 }}>
           Back to demo hub
         </Link>
       </footer>

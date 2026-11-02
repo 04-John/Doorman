@@ -86,7 +86,7 @@ export function SandboxPill() {
 export function MerchantTopBar({ right }: { right?: ReactNode }) {
   return (
     <header className="m-topbar" style={{ justifyContent: "space-between" }}>
-      <Link to="/" aria-label="Doorman demo overview" style={{ display: "flex", alignItems: "center", gap: 9, height: 36, padding: "0 12px 0 5px", borderRadius: 999, background: "#FFFFFF", border: "1px solid #E4E2DC", fontSize: 14.5, fontWeight: 600 }}>
+      <Link to="/" aria-label="Doorman demo overview" className="m-hit" style={{ display: "flex", alignItems: "center", gap: 9, height: 36, padding: "0 12px 0 5px", borderRadius: 999, background: "#FFFFFF", border: "1px solid #E4E2DC", fontSize: 14.5, fontWeight: 600 }}>
         <span style={{ width: 26, height: 26, borderRadius: "50%", background: "#15171C", display: "grid", placeItems: "center" }}>
           <LogoMark size={15} color="#FFFFFF" />
         </span>
