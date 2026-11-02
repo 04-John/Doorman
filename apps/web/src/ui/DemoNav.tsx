@@ -3,6 +3,7 @@
 // Add ?clean=1 to a URL to hide it for screen recordings (?clean=0 brings it back).
 import { useEffect, useState } from "react";
 import { NavLink, useSearchParams } from "react-router";
+import { useIsMobile } from "../mobile/useIsMobile";
 import { LogoMark } from "./chrome";
 import "./demo-nav.css";
 
@@ -36,7 +37,9 @@ function useHidden() {
 }
 
 export function DemoNav() {
-  const hidden = useHidden();
+  // Phones get each app's own tab bar instead of the strip.
+  const phone = useIsMobile();
+  const hidden = useHidden() || phone;
 
   // Full-height pages subtract the strip so they still fit the window.
   useEffect(() => {

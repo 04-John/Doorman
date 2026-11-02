@@ -1,0 +1,415 @@
+/* Mobile app layouts (phones, max-width 640px). Every class here starts with m-,
+   so nothing in this file changes the desktop pages. */
+:root {
+  --m-tabbar-h: 58px;
+  --m-safe-b: env(safe-area-inset-bottom, 0px);
+  --m-safe-t: env(safe-area-inset-top, 0px);
+  --m-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.m-app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  padding-bottom: calc(var(--m-tabbar-h) + var(--m-safe-b));
+  -webkit-tap-highlight-color: transparent;
+}
+/* Flex children may shrink below their content, so sideways scrollers stay inside the screen. */
+.m-app > * {
+  min-width: 0;
+}
+.m-app.m-white {
+  background: #ffffff;
+}
+.m-app.m-no-tabs {
+  padding-bottom: 0;
+}
+.m-pad {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+.m-title {
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  margin: 0;
+}
+.m-eyebrow {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.m-card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+
+/* Pressed state on anything tappable. */
+.m-tap {
+  transition: transform 0.14s ease, background-color 0.25s ease, opacity 0.2s ease;
+}
+@media (max-width: 640px) {
+  .m-tap:active {
+    transform: scale(0.97);
+  }
+}
+.m-btn {
+  height: 54px;
+  border: 0;
+  border-radius: 16px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #ffffff;
+  background: var(--ink);
+}
+.m-btn:disabled {
+  opacity: 0.6;
+}
+.m-btn-secondary {
+  background: #ffffff;
+  color: var(--ink);
+  border: 1.5px solid #c9c6bd;
+}
+.m-btn-light {
+  background: #ffffff;
+  color: var(--ink);
+}
+.m-btn-ghost-dark {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+/* Sideways scrollers (filter chips, product rails). */
+.m-hscroll {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 20px;
+}
+.m-hscroll::-webkit-scrollbar {
+  display: none;
+}
+.m-hscroll > * {
+  flex: none;
+  scroll-snap-align: start;
+}
+.m-clamp2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Bottom tab bar. */
+.m-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  height: calc(var(--m-tabbar-h) + var(--m-safe-b));
+  padding-bottom: var(--m-safe-b);
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  background: rgba(250, 249, 246, 0.92);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border-top: 1px solid var(--line);
+}
+.m-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-4);
+  transition: color 0.2s ease;
+}
+.m-tab[aria-current="page"] {
+  color: var(--ink);
+}
+.m-tab-badge {
+  position: absolute;
+  top: 5px;
+  left: calc(50% + 6px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--blocked-fg);
+  color: #ffffff;
+  font: 700 10.5px var(--mono);
+  display: grid;
+  place-items: center;
+  animation: m-pop 0.35s var(--m-ease) both;
+}
+
+/* Sticky translucent top bar. */
+.m-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  padding: calc(10px + var(--m-safe-t)) 12px 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(244, 243, 239, 0.9);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.m-white .m-topbar {
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(21, 23, 28, 0.06);
+}
+.m-icon-btn {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink);
+}
+.m-icon-btn > span {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--chip);
+  display: grid;
+  place-items: center;
+}
+
+/* Full-screen pushed screen (chat) and bottom-fixed action bar. */
+.m-push {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-2);
+  animation: m-push 0.34s var(--m-ease) both;
+}
+.m-actionbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--m-tabbar-h) + var(--m-safe-b));
+  z-index: 14;
+  padding: 10px 16px;
+  display: flex;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border-top: 1px solid var(--line-soft);
+}
+
+/* Customer flow shell (link an agent, passes, approve). */
+.m-shell-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 8px 20px calc(20px + var(--m-safe-b));
+  animation: m-fade 0.35s var(--m-ease) both;
+}
+.m-shell-main h1 {
+  font-size: 30px !important;
+  line-height: 1.12 !important;
+  letter-spacing: -0.025em !important;
+}
+.m-shell-main button,
+.m-shell-main a {
+  -webkit-tap-highlight-color: transparent;
+}
+.m-shell-main > div[style*="margin-top: auto"] {
+  position: sticky;
+  bottom: 0;
+  margin-bottom: calc(-20px - var(--m-safe-b));
+  padding: 18px 0 calc(16px + var(--m-safe-b));
+  background: linear-gradient(rgba(255, 255, 255, 0), #ffffff 18px);
+}
+
+/* Merchant settings + rules on phones. */
+.m-merchant .su-main {
+  padding: 4px 20px 32px;
+}
+.m-merchant .su-title {
+  font-size: 30px;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+.m-merchant .su-card {
+  padding: 18px;
+  border-radius: 20px;
+}
+.m-merchant .su-steps {
+  gap: 6px;
+}
+.m-merchant .btn {
+  min-height: 48px;
+}
+.m-merchant input,
+.m-merchant textarea,
+.m-merchant select {
+  font-size: 16px;
+}
+
+/* Cart drawer becomes a bottom sheet on phones. */
+@media (max-width: 640px) {
+  .sf-cart-panel {
+    top: auto;
+    left: 0;
+    width: 100%;
+    max-height: 88dvh;
+    border-radius: 28px 28px 0 0;
+    padding-bottom: var(--m-safe-b);
+    box-shadow: 0 -20px 50px rgba(21, 23, 28, 0.2);
+    animation: m-up 0.4s var(--m-ease) both;
+  }
+  .sf-cart-head {
+    padding-top: 22px;
+  }
+}
+
+/* Request detail as a bottom sheet. */
+.m-sheet-grab {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 2px;
+}
+.m-sheet-grab span {
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line-strong);
+}
+
+/* Skeleton shimmer. */
+.m-sk {
+  background: linear-gradient(90deg, #eeede8 0, #f7f6f3 50%, #eeede8 100%);
+  background-size: 800px 100%;
+  animation: dm-shimmer 1.3s linear infinite;
+}
+
+@keyframes m-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes m-push {
+  from {
+    opacity: 0.3;
+    transform: translateX(48px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes m-up {
+  from {
+    opacity: 0.5;
+    transform: translateY(64px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes m-row {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes m-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes m-pulse-light {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 138, 122, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(255, 138, 122, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 138, 122, 0);
+  }
+}
+.m-fade {
+  animation: m-fade 0.35s var(--m-ease) both;
+}
+.m-row-in {
+  animation: m-row 0.4s ease both;
+}
+.m-pop {
+  animation: m-pop 0.5s var(--m-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-fade,
+  .m-row-in,
+  .m-pop,
+  .m-push,
+  .m-shell-main,
+  .m-tab-badge,
+  .sf-cart-panel {
+    animation: none !important;
+  }
+  .m-tap:active {
+    transform: none;
+  }
+}
+
+.m-merchant .su-rules-head {
+  flex-direction: column;
+  align-items: stretch;
+}
+.m-merchant .su-rules-head h1 {
+  font-size: 34px !important;
+  letter-spacing: -0.025em !important;
+}
+.m-merchant .su-rules-head > .btn {
+  width: 100%;
+  height: 52px !important;
+  border-radius: 16px;
+}

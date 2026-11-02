@@ -2,6 +2,7 @@ import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Outlet, Link as RouterLink, Route, Routes } from "react-router";
 import "./styles/tokens.css";
+import "./mobile/mobile.css";
 import { Spinner } from "./ui/bits";
 import { DemoNav } from "./ui/DemoNav";
 import { ToastProvider } from "./ui/toast";
