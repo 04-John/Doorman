@@ -27,6 +27,15 @@ export interface ToolOutcome {
   data: Record<string, unknown>;
 }
 
+// The store answers in JSON; an unexpected error can come back as plain text.
+function parseData(text: string): Record<string, unknown> {
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return { error: text };
+  }
+}
+
 export class StoreAgent {
   private client: Client | null = null;
   passToken: string | null = null;
@@ -62,9 +71,15 @@ export class StoreAgent {
       await client.connect(new StreamableHTTPClientTransport(new URL("/mcp", this.baseUrl), { fetch: this.fetch }));
       this.client = client;
     }
-    const result = await this.client.callTool({ name: tool, arguments: args });
-    const text = (result.content as { type: string; text?: string }[])[0]?.text ?? "{}";
-    return { ok: !result.isError, data: JSON.parse(text) as Record<string, unknown> };
+    // A call that fails outright (say, PayPal's sandbox didn't answer while the store
+    // made an order) is a refusal like any other, so one agent's hiccup can't end the drop.
+    try {
+      const result = await this.client.callTool({ name: tool, arguments: args });
+      const text = (result.content as { type: string; text?: string }[])[0]?.text ?? "{}";
+      return { ok: !result.isError, data: parseData(text) };
+    } catch (err) {
+      return { ok: false, data: { error: err instanceof Error ? err.message : String(err) } };
+    }
   }
 
   async close() {
