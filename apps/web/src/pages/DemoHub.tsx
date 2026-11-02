@@ -6,7 +6,9 @@ import { api } from "../lib/api";
 import { money } from "../lib/format";
 import { LogoMark, SandboxTag } from "../ui/chrome";
 import { DecisionBadge, IdentityBadge } from "../ui/status";
+import { useIsMobile } from "../mobile/useIsMobile";
 import "./hub/hub.css";
+import { MobileHub } from "./hub/MobileHub";
 
 const REPO_URL = "https://github.com/04-John/Doorman";
 
@@ -32,6 +34,8 @@ function useDropFacts() {
 export default function DemoHub() {
   const { count, priceCents } = useDropFacts();
   const price = money(priceCents);
+  const phone = useIsMobile();
+  if (phone) return <MobileHub count={count} price={price} repoUrl={REPO_URL} />;
 
   return (
     <div className="hub-page">
