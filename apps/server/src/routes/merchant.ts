@@ -1,4 +1,5 @@
-// Merchant dashboard API. Open for the demo so judges can use it without an account.
+// Merchant dashboard API. Every route but sign-in needs the merchant password
+// (judges get it with the testing instructions).
 import { and, asc, count, countDistinct, desc, eq, inArray, sum } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
@@ -11,6 +12,7 @@ import { ApprovalError, releaseByMerchant } from "../doorman/approvals.js";
 import { approvalUrl } from "../doorman/checkout.js";
 import type { Check } from "../doorman/engine.js";
 import { eventBus, type EventRow } from "../doorman/events.js";
+import { endMerchantSession, merchantOnly, merchantPasswordSet, merchantSignedIn, passwordMatches, startMerchantSession } from "../doorman/merchant-session.js";
 import { policySchema } from "../doorman/policy.js";
 import { currentDrop, expireStaleApprovals, getProduct, getRules, resetDrop, saveRules, type DropRow } from "../doorman/store.js";
 import { paypal } from "../paypal/client.js";
@@ -198,11 +200,28 @@ function toJson(row: EventRow): string {
 const compiling = new Gate(1);
 
 export const merchantRoutes = new Hono()
-  .get("/api/dashboard", async (c) => c.json(await sharedSummary()))
+  .get("/api/merchant/session", (c) => c.json({ signedIn: merchantSignedIn(c), passwordSet: merchantPasswordSet }))
 
-  .get("/api/merchant", async (c) => c.json(await merchant()))
+  .post("/api/merchant/login", perMinute(10), async (c) => {
+    if (!merchantPasswordSet) return c.json({ error: "merchant_password_not_set", message: "The merchant side is locked until MERCHANT_PASSWORD is set on the server." }, 503);
+    const body = await c.req.json().catch(() => null);
+    if (typeof body?.password !== "string" || !passwordMatches(body.password)) {
+      return c.json({ error: "wrong_password", message: "That isn't the merchant password." }, 401);
+    }
+    startMerchantSession(c);
+    return c.json({ signedIn: true });
+  })
 
-  .get("/api/events", async (c) => {
+  .post("/api/merchant/logout", (c) => {
+    endMerchantSession(c);
+    return c.json({ signedIn: false });
+  })
+
+  .get("/api/dashboard", merchantOnly,async (c) => c.json(await sharedSummary()))
+
+  .get("/api/merchant", merchantOnly, async (c) => c.json(await merchant()))
+
+  .get("/api/events", merchantOnly, async (c) => {
     const drop = await shownDrop();
     if (!drop) return c.json({ events: [] });
     const rows = await db
@@ -216,7 +235,7 @@ export const merchantRoutes = new Hono()
   })
 
   // Live feed for the dashboard (Server-Sent Events).
-  .get("/api/events/stream", (c) => {
+  .get("/api/events/stream", merchantOnly, (c) => {
     if (openStreams >= MAX_STREAMS) return c.json({ error: "busy", message: "Too many dashboards open right now." }, 503);
     openStreams += 1;
     return streamSSE(c, async (stream) => {
@@ -239,13 +258,13 @@ export const merchantRoutes = new Hono()
     });
   })
 
-  .get("/api/events/:id", async (c) => {
+  .get("/api/events/:id", merchantOnly, async (c) => {
     const detail = await eventDetail(c.req.param("id"));
     return detail ? c.json(detail) : c.json({ error: "not_found" }, 404);
   })
 
   // Written on demand, so the detail panel can open instantly and show a loading state.
-  .get("/api/events/:id/explanation", perMinute(60), async (c) => {
+  .get("/api/events/:id/explanation", merchantOnly, perMinute(60), async (c) => {
     const id = c.req.param("id");
     const [event] = await db.select().from(schema.events).where(eq(schema.events.id, id));
     if (!event) return c.json({ error: "not_found" }, 404);
@@ -256,27 +275,27 @@ export const merchantRoutes = new Hono()
     return c.json(await explain({ event, order, timeline }));
   })
 
-  .post("/api/drop/run", perMinute(6), async (c) => {
+  .post("/api/drop/run", merchantOnly, perMinute(6), async (c) => {
     if (simulationRunning()) return c.json({ error: "already_running" }, 409);
     const drop = await runDrop();
     return c.json({ dropId: drop.id }, 202);
   })
 
-  .post("/api/drop/reset", perMinute(6), async (c) => {
+  .post("/api/drop/reset", merchantOnly, perMinute(6), async (c) => {
     if (simulationRunning()) return c.json({ error: "simulation_running" }, 409);
     await resetDrop();
     return c.json({ ok: true });
   })
 
   // Ava's conversation, with the latest status of any order she created.
-  .get("/api/drop/transcript", async (c) => c.json(await sharedTranscript()))
+  .get("/api/drop/transcript", merchantOnly, async (c) => c.json(await sharedTranscript()))
 
-  .post("/api/agents/:keyId/block", perMinute(30), async (c) => {
+  .post("/api/agents/:keyId/block", merchantOnly, perMinute(30), async (c) => {
     const agent = await setAgentBlocked(c.req.param("keyId"), true);
     return agent ? c.json({ blocked: true }) : c.json({ error: "not_found" }, 404);
   })
 
-  .post("/api/orders/:id/release", perMinute(30), async (c) => {
+  .post("/api/orders/:id/release", merchantOnly, perMinute(30), async (c) => {
     try {
       const order = await releaseByMerchant(c.req.param("id"));
       return c.json({ status: order.status });
@@ -286,13 +305,13 @@ export const merchantRoutes = new Hono()
     }
   })
 
-  .get("/api/rules", async (c) => {
+  .get("/api/rules", merchantOnly, async (c) => {
     const rules = await getRules();
     return c.json({ ...rules, cards: describePolicy(rules.policy) });
   })
 
   // Plain English in, proposed settings out. Not saved until the merchant confirms with PUT.
-  .post("/api/rules/compile", perMinute(10), async (c) => {
+  .post("/api/rules/compile", merchantOnly, perMinute(10), async (c) => {
     if (!aiEnabled) return c.json({ error: "ai_unavailable", message: "Add GEMINI_API_KEY to use the rule writer." }, 503);
     const body = await c.req.json().catch(() => null);
     if (typeof body?.rulesText !== "string" || !body.rulesText.trim() || body.rulesText.length > 2000) {
@@ -312,7 +331,7 @@ export const merchantRoutes = new Hono()
     );
   })
 
-  .put("/api/rules", perMinute(20), async (c) => {
+  .put("/api/rules", merchantOnly, perMinute(20), async (c) => {
     const body = await c.req.json().catch(() => null);
     const policy = policySchema.safeParse(body?.policy);
     if (!policy.success || typeof body?.rulesText !== "string") return c.json({ error: "invalid_rules" }, 400);

@@ -4,6 +4,7 @@ import { BrowserRouter, Outlet, Link as RouterLink, Route, Routes } from "react-
 import "./styles/tokens.css";
 import { Spinner } from "./ui/bits";
 import { DemoNav } from "./ui/DemoNav";
+import { MerchantGate } from "./ui/MerchantGate";
 import { ToastProvider } from "./ui/toast";
 
 // Each screen loads on its own, so the customer pages never download the dashboard grid.
@@ -55,9 +56,11 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route element={<WithDemoNav />}>
             <Route path="/" element={<DemoHub />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/setup" element={<Setup />} />
-            <Route path="/rules" element={<Setup mode="rules" />} />
+            <Route element={<MerchantGate />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/setup" element={<Setup />} />
+              <Route path="/rules" element={<Setup mode="rules" />} />
+            </Route>
             <Route path="/store" element={<Storefront />} />
             <Route path="/approve/:token" element={<Approve />} />
             <Route path="/link" element={<LinkAgent />} />

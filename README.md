@@ -17,6 +17,8 @@ The demo runs on PayPal's sandbox. Whenever PayPal asks you to log in, use this 
 
 It's a test account with play money. Use a private or incognito window so your own PayPal login doesn't get in the way.
 
+The merchant side (**Dashboard**, **Rules**, **Settings**) asks for the merchant password. It's in the testing instructions of the Devpost submission. Customer pages don't need it.
+
 1. **Give an AI agent a pass, as the customer.** Open the [storefront](https://doorman-ppw2.onrender.com/store) and click **Let my AI assistant buy it**. Log in with PayPal using the sandbox account, so PayPal confirms you're a real, verified person. Choose **Ava**, set a spending cap and how long the pass lasts, and click **Create pass**. (If the store already offers **Ask Ava to buy it**, someone linked her earlier; use **Link an agent** in the top bar to give her a fresh pass.)
 2. **Run a limited drop, as the merchant.** Open the [dashboard](https://doorman-ppw2.onrender.com/dashboard) and click **Run the drop**. A 50-hoodie drop opens, and for about a minute and a half dozens of scalper bots and three AI agents hit the store:
    - Unsigned bots can browse but not buy, and the swarm gets throttled.
@@ -124,13 +126,14 @@ The hosted demo is one small server on a free plan (512 MB of memory), so it's b
 - **The database does less.** Open dashboards and storefronts share one read a second, and background tabs stop polling. Nothing on a timer touches the database, so Neon's free compute can scale to zero when nobody's using the demo.
 - **Money is safe under concurrency.** An order is claimed in the database, so the customer's browser and PayPal's webhook can't both finish it. Stock is reserved atomically, so a drop can't oversell.
 - **Clean restarts.** On a redeploy the server finishes requests in flight, ends live feeds so dashboards reconnect, and closes its database connections.
+- **The merchant side is private.** The dashboard, rules and settings, and every API behind them, need the merchant password. Signing in sets a signed, `HttpOnly`, `SameSite=Strict` cookie, and wrong guesses are rate-limited. The site only serves the built web app: no source maps, no server code, and a 404 for anything else (`/.env`, `/.git/…`). Pages can't be framed by other sites.
 
 To run many servers for many stores, the next steps would be:
 
 1. Move the shared in-memory state into Redis, so any server can handle any request. That covers rate counters and replay nonces (keys that expire) and the live feed (pub/sub, or Postgres `LISTEN/NOTIFY`). Orders are already safe across servers because they're claimed in the database.
 2. Run drop simulations and AI work in a separate worker behind a queue.
 3. Archive or partition old events, and keep running totals per drop instead of counting rows.
-4. Add merchant accounts and log-in, and keep each merchant's data separate. The dashboard is deliberately open for the demo.
+4. Replace the single merchant password with merchant accounts, and keep each merchant's data separate.
 
 ## Run it locally
 
@@ -151,7 +154,7 @@ npm run check:paypal     # confirms your PayPal keys work
 npm run dev              # API on :8787, web app on :5173
 ```
 
-Open **http://127.0.0.1:5173**. Use `127.0.0.1`, not `localhost`, because PayPal rejects `localhost` return URLs. To give Ava a pass to shop with, link her from the store once (**Let my AI assistant buy it**). Until then she shops without one, and Doorman asks the customer to step up. `npm test` runs the signature and rules-engine tests.
+Open **http://127.0.0.1:5173**. Use `127.0.0.1`, not `localhost`, because PayPal rejects `localhost` return URLs. The dashboard asks for the `MERCHANT_PASSWORD` you chose in `.env`. To give Ava a pass to shop with, link her from the store once (**Let my AI assistant buy it**). Until then she shops without one, and Doorman asks the customer to step up. `npm test` runs the signature and rules-engine tests.
 
 PayPal can only deliver webhooks to a public HTTPS address, so they're active on the hosted version only.
 
@@ -160,7 +163,7 @@ PayPal can only deliver webhooks to a public HTTPS address, so they're active on
 [`render.yaml`](render.yaml) is a Render Blueprint for one free web service that serves the API, the MCP endpoint and the web app.
 
 1. In Render, choose **New → Blueprint** and pick this repository.
-2. Enter `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `DATABASE_URL` and `GEMINI_API_KEY`.
+2. Enter `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `DATABASE_URL`, `GEMINI_API_KEY` and `MERCHANT_PASSWORD`.
 3. Set `DEMO_BUYER_PAYER_ID` in `render.yaml` to your sandbox buyer's payer ID.
 4. Once it's live, add `<your Render URL>/auth/paypal/callback` to the PayPal app's Log in with PayPal return URLs.
 

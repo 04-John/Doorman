@@ -220,9 +220,13 @@ async function request<T>(path: string, init: { method?: "GET" | "POST" | "PUT";
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   });
   const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+  // The merchant's sign-in ran out: the sign-in screen takes over again.
+  if (res.status === 401 && body.error === "merchant_login_required") window.dispatchEvent(new Event(MERCHANT_SIGNED_OUT));
   if (!res.ok) throw new ApiError(res.status, body.error, body.message ?? body.error ?? `Request failed (${res.status})`);
   return body as T;
 }
+
+export const MERCHANT_SIGNED_OUT = "doorman:merchant-signed-out";
 
 export const api = {
   config: () => request<{ paypalClientId: string }>("/api/config"),
@@ -230,6 +234,9 @@ export const api = {
   logout: () => request("/auth/logout", { method: "POST" }),
   store: () => request<StoreInfo>("/api/store"),
   merchant: () => request<MerchantInfo>("/api/merchant"),
+  merchantSession: () => request<{ signedIn: boolean; passwordSet: boolean }>("/api/merchant/session"),
+  merchantLogin: (password: string) => request("/api/merchant/login", { method: "POST", body: { password } }),
+  merchantLogout: () => request("/api/merchant/logout", { method: "POST" }),
 
   dashboard: () => request<Dashboard>("/api/dashboard"),
   events: (limit = 400) => request<{ events: DoorEvent[] }>(`/api/events?limit=${limit}`).then((r) => r.events),

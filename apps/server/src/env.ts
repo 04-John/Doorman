@@ -31,6 +31,11 @@ const schema = z.object({
   PUBLIC_URL: z.url(),
   // Sandbox buyer the demo agent "Ava" shops for (its payer ID from Log in with PayPal).
   DEMO_BUYER_PAYER_ID: z.string().optional(),
+  // Opens the merchant side (dashboard, rules, settings). Without it that side stays locked.
+  MERCHANT_PASSWORD: z
+    .string()
+    .refine((p) => p === "" || p.length >= 10, "is too short. Use at least 10 characters.")
+    .optional(),
   // Set by Render on the host: the service's own public address.
   RENDER_EXTERNAL_URL: z.url().optional(),
   // How many proxies in front of the server add to X-Forwarded-For (3 on Render).
