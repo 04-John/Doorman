@@ -613,7 +613,7 @@ export function Passes() {
   const shown = passes && shownPasses(passes);
 
   return (
-    <MobileShell brand="doorman" right={navText("My passes")}>
+    <MobileShell brand="doorman" right={navText("My passes")} tabs>
       {unreachable ? (
         <Unreachable onRetry={retry} />
       ) : customer === undefined ? (

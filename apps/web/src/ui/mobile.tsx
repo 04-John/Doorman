@@ -1,11 +1,53 @@
 // Shell for customer pages: mobile-first, content column capped at 440px on desktop.
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
+import { closeIcon, CustomerTabBar } from "../mobile/chrome";
+import { useIsMobile } from "../mobile/useIsMobile";
 import { Spinner } from "./bits";
 import { LogoMark } from "./chrome";
 import { ICON, Icon } from "./status";
 
-export function MobileShell({ brand, right, children }: { brand: "store" | "doorman"; right?: ReactNode; children: ReactNode }) {
+export function MobileShell({ brand, right, tabs = false, children }: { brand: "store" | "doorman"; right?: ReactNode; tabs?: boolean; children: ReactNode }) {
+  const phone = useIsMobile();
+  // On a phone the flow fills the screen like an app: close button, full-height
+  // content with its main action pinned at the bottom, and Shop / Passes tabs where it helps.
+  if (phone) {
+    const brandMark =
+      brand === "store" ? (
+        <span style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 16, fontWeight: 600 }}>
+          <span style={{ width: 30, height: 30, borderRadius: 8, background: "#15171C", color: "#FFFFFF", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>SS</span>
+          <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
+            Static Supply
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, color: "#4A4D55" }}>
+              <LogoMark size={11} color="#15171C" />
+              Protected by Doorman
+            </span>
+          </span>
+        </span>
+      ) : (
+        <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 600 }}>
+          <LogoMark size={20} color="#15171C" />
+          Doorman
+        </span>
+      );
+    return (
+      <div className={`m-app m-white${tabs ? "" : " m-no-tabs"}`}>
+        <header className="m-topbar" style={{ justifyContent: "space-between", padding: tabs ? undefined : "calc(6px + var(--m-safe-t)) 12px 6px 6px" }}>
+          {!tabs && (
+            <Link to="/store" aria-label="Close" className="m-icon-btn m-tap">
+              {closeIcon}
+            </Link>
+          )}
+          {brandMark}
+          <span style={{ minWidth: tabs ? 0 : 84, textAlign: "right", paddingRight: 8 }}>{brand === "store" ? null : right}</span>
+        </header>
+        <main className="m-shell-main" style={{ position: "relative" }}>
+          {children}
+        </main>
+        {tabs && <CustomerTabBar />}
+      </div>
+    );
+  }
   return (
     <div style={{ minHeight: "100%", background: "#FFFFFF" }}>
       <div style={{ maxWidth: 440, margin: "0 auto", minHeight: "calc(100vh - var(--demo-nav-h, 0px))", display: "flex", flexDirection: "column", borderLeft: "1px solid #EEEDE8", borderRight: "1px solid #EEEDE8" }}>
@@ -76,7 +118,7 @@ export function BigButton({ children, onClick, href, variant = "primary", disabl
   };
   if (href) {
     return href.startsWith("/") ? (
-      <Link to={href} style={style}>
+      <Link to={href} style={style} className="m-tap">
         {children}
       </Link>
     ) : (
@@ -86,7 +128,7 @@ export function BigButton({ children, onClick, href, variant = "primary", disabl
     );
   }
   return (
-    <button type="button" onClick={onClick} disabled={disabled} style={style}>
+    <button type="button" onClick={onClick} disabled={disabled} style={style} className="m-tap">
       {children}
     </button>
   );

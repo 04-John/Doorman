@@ -9,7 +9,9 @@ import { Skeleton } from "../ui/bits";
 import { DROP_HERO, ProductPhoto } from "../ui/product";
 import { AgentAvatar, ICON, Icon } from "../ui/status";
 import { useToast } from "../ui/toast";
+import { useIsMobile } from "../mobile/useIsMobile";
 import { CartDrawer, useCart } from "./store/Cart";
+import { MobileStorefront } from "./store/MobileStorefront";
 import "./store/store.css";
 
 type Product = StoreInfo["products"][number];
@@ -57,6 +59,7 @@ export default function Storefront() {
   const linked = useLinkedAgent();
   const [asking, setAsking] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
+  const mobile = useIsMobile();
 
   // Warm PayPal up now: the cart and Ava's approval page (same tab) both need it.
   useEffect(preloadPayPal, []);
@@ -139,6 +142,41 @@ export default function Storefront() {
     api.store().then(setStore, () => {});
   }, []);
   const closeCart = useCallback(() => setCartOpen(false), []);
+
+  // Phones get the store as an app; same cart, same agent checkout.
+  if (mobile) {
+    return (
+      <>
+        <MobileStorefront
+          store={store}
+          failed={failed}
+          onRetry={() => setAttempt((n) => n + 1)}
+          hero={hero}
+          sizes={SIZES}
+          size={size}
+          setSize={(s) => setSize(s as (typeof SIZES)[number])}
+          cartCount={cartCount}
+          openCart={() => setCartOpen(true)}
+          addToCart={addToCart}
+          askAgent={(p) => void askAgent(p)}
+          asking={asking}
+          linked={linked}
+          refusal={refusal}
+          owned={gotYours != null}
+          pill={store && hero ? <DropPill store={store} product={hero} /> : null}
+          description={
+            store && hero?.limitedDrop ? (
+              <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "#4A4D55", margin: 0 }}>
+                Heavyweight 450 gsm fleece, reflective back print. {store.drop?.stockTotal ?? hero.stock} made. {NUMBER_WORDS[store.perCustomerLimit - 1] ?? store.perCustomerLimit} per customer.
+              </p>
+            ) : null
+          }
+          gotYours={gotYours && hero ? <GotYours name={hero.name} limit={dropLimit!} approvalPath={gotYours.approvalPath} /> : null}
+        />
+        {cartOpen && <CartDrawer items={cart} setItems={setCart} dropLimit={dropLimit} onClose={closeCart} onPaid={refresh} />}
+      </>
+    );
+  }
 
   return (
     <div className="sf-page">
