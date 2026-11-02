@@ -1,10 +1,9 @@
-// Sliding one-minute window of requests per visitor.
-const WINDOW_MS = 60_000;
-const hits = new Map<string, number[]>();
+// Requests per visitor over the last minute. Memory stays flat however many
+// visitors arrive: one small counter each, and the 100,000 most recent at most.
+import { WindowCounter } from "../lib/bounded.js";
+
+const perVisitor = new WindowCounter(60_000, 100_000);
 
 export function countRequest(visitorKey: string, now = Date.now()): number {
-  const recent = (hits.get(visitorKey) ?? []).filter((t) => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(visitorKey, recent);
-  return recent.length;
+  return perVisitor.hit(visitorKey, now);
 }

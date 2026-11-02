@@ -66,14 +66,23 @@ export interface NonceStore {
   claim(nonce: string, expiresAt: number): boolean;
 }
 
-export function createNonceStore(): NonceStore {
+// Nonces are remembered until their signature expires (5 minutes at most).
+// Expired ones are cleared every few seconds rather than on every request, and
+// past `max` the oldest go first: under a flood that only shortens how long an
+// old nonce is remembered, it never lets the server run out of memory.
+export function createNonceStore(max = 200_000): NonceStore {
   const seen = new Map<string, number>();
+  let lastSweep = 0;
   return {
     claim(nonce, expiresAt) {
       const now = Date.now();
-      for (const [n, exp] of seen) if (exp < now) seen.delete(n);
+      if (now - lastSweep > 5_000) {
+        lastSweep = now;
+        for (const [n, exp] of seen) if (exp < now) seen.delete(n);
+      }
       if (seen.has(nonce)) return false;
       seen.set(nonce, expiresAt);
+      if (seen.size > max) seen.delete(seen.keys().next().value!);
       return true;
     },
   };

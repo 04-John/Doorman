@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { registerAgent } from "../agents/registry.js";
 import { db, schema } from "../db/client.js";
 import { env } from "../env.js";
+import { simulatorHeaders } from "../lib/client-ip.js";
 import { demoKey, StoreAgent } from "./agent-client.js";
 
 // "listed" agents appear in the picker when a customer links one from the store.
@@ -32,7 +33,7 @@ export async function ensureDemoAgents() {
 }
 
 export function demoStoreAgent(name: DemoAgentName) {
-  return new StoreAgent(`http://127.0.0.1:${env.PORT}`, name, keys.get(name)!);
+  return new StoreAgent(`http://127.0.0.1:${env.PORT}`, name, keys.get(name)!, null, simulatorHeaders());
 }
 
 // Pass tokens the demo agents have collected. A real agent keeps its own; these

@@ -1,9 +1,10 @@
 // PayPal's webhook deliveries. Anything PayPal can't vouch for is turned away.
 import { Hono } from "hono";
 import { handlePayPalEvent } from "../doorman/paypal-events.js";
+import { perMinute } from "../lib/limits.js";
 import { verifyWebhook, WEBHOOK_PATH, type WebhookEvent } from "../paypal/webhooks.js";
 
-export const webhookRoutes = new Hono().post(WEBHOOK_PATH, async (c) => {
+export const webhookRoutes = new Hono().post(WEBHOOK_PATH, perMinute(300), async (c) => {
   const raw = await c.req.text();
   let event: WebhookEvent;
   try {

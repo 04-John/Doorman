@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import { closeDb } from "./db/client.js";
+import { eventBus } from "./doorman/events.js";
 import { env } from "./env.js";
 import { PayPalError } from "./paypal/client.js";
 import { agentRoutes } from "./routes/agents.js";
@@ -19,6 +22,10 @@ import { ensureDemoAgents } from "./sim/demo-agents.js";
 
 const app = new Hono();
 
+// Nothing Doorman accepts is more than a few kilobytes, so anything over 256 KB
+// is refused before it's read into memory.
+app.use("*", bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json({ error: "too_large" }, 413) }));
+
 app.get("/health", (c) => c.json({ ok: true, paypal: env.PAYPAL_ENV }));
 app.route("/", authRoutes);
 app.route("/", agentRoutes);
@@ -26,8 +33,10 @@ app.route("/", mcpRoutes);
 app.route("/", customerRoutes);
 app.route("/", shopRoutes);
 app.route("/", merchantRoutes);
-app.route("/", labRoutes);
 app.route("/", webhookRoutes);
+// The Phase 1 PayPal test bench captures and voids by ID with no checks, so it
+// only exists in local development.
+if (!env.RENDER_EXTERNAL_URL) app.route("/", labRoutes);
 
 // In production the server also serves the built web app: one service, one URL.
 const webDist = fileURLToPath(new URL("../../web/dist", import.meta.url));
@@ -64,7 +73,7 @@ const KEEP_AWAKE_UNTIL = Date.parse("2026-12-16T00:00:00Z");
 if (env.RENDER_EXTERNAL_URL) {
   const selfCheck = `${env.RENDER_EXTERNAL_URL}/health`;
   setInterval(() => {
-    if (Date.now() < KEEP_AWAKE_UNTIL) fetch(selfCheck).catch(() => {});
+    if (Date.now() < KEEP_AWAKE_UNTIL) fetch(selfCheck, { signal: AbortSignal.timeout(30_000) }).catch(() => {});
   }, 10 * 60_000);
 }
 
@@ -76,3 +85,18 @@ server.on("error", (err) => {
   console.error("[doorman] server failed to start:", err.message);
   process.exit(1);
 });
+
+// Render sends SIGTERM before it replaces the server (a redeploy or restart).
+// Stop taking requests, end the live feeds so browsers reconnect to the new
+// server, let requests in flight finish, then close the database pool.
+let stopping = false;
+function shutDown(signal: string) {
+  if (stopping) return;
+  stopping = true;
+  console.log(`[doorman] ${signal}: finishing requests in flight, then stopping`);
+  eventBus.emit("shutdown");
+  server.close(() => void closeDb().finally(() => process.exit(0)));
+  setTimeout(() => process.exit(0), 10_000).unref();
+}
+process.once("SIGTERM", () => shutDown("SIGTERM"));
+process.once("SIGINT", () => shutDown("SIGINT"));

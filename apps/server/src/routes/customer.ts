@@ -8,6 +8,8 @@ import { approveLinkRequest, grantPass, linkRequestView, passesFor, revokePass }
 import { currentCustomer } from "../doorman/sessions.js";
 import { currentDrop, customerDropOrders, getRules, searchProducts } from "../doorman/store.js";
 import { env } from "../env.js";
+import { shared } from "../lib/bounded.js";
+import { perMinute } from "../lib/limits.js";
 import { DEMO_AGENTS, demoKeyId } from "../sim/demo-agents.js";
 
 const linkApproval = z.object({
@@ -17,13 +19,16 @@ const linkApproval = z.object({
 
 const agentView = (a: typeof schema.agents.$inferSelect) => ({ keyId: a.keyId, name: a.name, operator: a.operator });
 
+// Everyone watching a live drop polls the store; they share one read a second.
+const storefront = shared(1_000, () => Promise.all([searchProducts(), currentDrop(), getRules()]));
+
 export const customerRoutes = new Hono()
   .get("/api/config", (c) => c.json({ paypalClientId: env.PAYPAL_CLIENT_ID }))
 
   // Storefront data: products, the drop's state, the per-customer limit, and for a
   // signed-in customer what they already have in the live drop.
   .get("/api/store", async (c) => {
-    const [products, drop, { policy }, customer] = await Promise.all([searchProducts(), currentDrop(), getRules(), currentCustomer(c)]);
+    const [[products, drop, { policy }], customer] = await Promise.all([storefront(), currentCustomer(c)]);
     const yours = customer && drop?.status === "live" ? await customerDropOrders(drop, customer.payerId) : null;
     return c.json({
       products: products.map((p) => ({ id: p.id, name: p.name, priceCents: p.priceCents, stock: p.stock, limitedDrop: p.limitedDrop })),
@@ -50,7 +55,7 @@ export const customerRoutes = new Hono()
     return view ? c.json(view) : c.json({ error: "not_found" }, 404);
   })
 
-  .post("/api/link-requests/:id/approve", async (c) => {
+  .post("/api/link-requests/:id/approve", perMinute(20), async (c) => {
     const customer = await currentCustomer(c);
     if (!customer) return c.json({ error: "login_required" }, 401);
     const body = linkApproval.safeParse(await c.req.json().catch(() => null));
@@ -76,7 +81,7 @@ export const customerRoutes = new Hono()
   })
 
   // The customer chose the agent themselves; it collects the pass next time it visits.
-  .post("/api/passes", async (c) => {
+  .post("/api/passes", perMinute(20), async (c) => {
     const customer = await currentCustomer(c);
     if (!customer) return c.json({ error: "login_required" }, 401);
     const body = linkApproval.extend({ agentKeyId: z.string().min(1) }).safeParse(await c.req.json().catch(() => null));
@@ -93,7 +98,7 @@ export const customerRoutes = new Hono()
     return c.json({ passes: await passesFor(customer) });
   })
 
-  .post("/api/passes/:id/revoke", async (c) => {
+  .post("/api/passes/:id/revoke", perMinute(30), async (c) => {
     const customer = await currentCustomer(c);
     if (!customer) return c.json({ error: "login_required" }, 401);
     const pass = await revokePass(c.req.param("id"), customer);
@@ -102,11 +107,11 @@ export const customerRoutes = new Hono()
 
   .get("/api/approvals/:token", async (c) => c.json(await approvalView(c.req.param("token"))))
 
-  .post("/api/approvals/:token/authorize", async (c) =>
+  .post("/api/approvals/:token/authorize", perMinute(30), async (c) =>
     c.json(await authorizeApproval(c.req.param("token"), await currentCustomer(c))),
   )
 
-  .post("/api/approvals/:token/decline", async (c) => c.json(await declineApproval(c.req.param("token"))))
+  .post("/api/approvals/:token/decline", perMinute(30), async (c) => c.json(await declineApproval(c.req.param("token"))))
 
   .onError((err, c) => {
     if (err instanceof ApprovalError) return c.json({ error: err.code, message: err.message }, err.status);

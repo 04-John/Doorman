@@ -77,12 +77,13 @@ export default function Storefront() {
     };
   }, [attempt]);
 
-  // Keep the stock count moving while a drop is live.
+  // Keep the stock count moving while a drop is live (and the tab is in view).
   const live = store?.drop?.status === "live";
   useEffect(() => {
     if (!live) return;
     let cancelled = false;
     const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       api.store().then(
         (s) => {
           if (!cancelled) setStore(s);

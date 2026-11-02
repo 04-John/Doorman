@@ -11,6 +11,7 @@ import { money } from "../doorman/engine.js";
 import type { Visitor } from "../doorman/identity.js";
 import { collectPassToken, collectWaitingPasses, createLinkRequest } from "../doorman/passes.js";
 import { getProduct, searchProducts, type ProductRow } from "../doorman/store.js";
+import { LruMap } from "../lib/bounded.js";
 
 export function describeVisitor(visitor: Visitor): string {
   return visitor.agent ? `${visitor.agent.name} (${visitor.agent.operator})` : "unknown visitor";
@@ -44,7 +45,8 @@ const productView = (p: ProductRow) => ({
 });
 
 // Carts live in memory for a few minutes; checkout turns one into an order.
-const carts = new Map<string, { visitorKey: string; productId: string; size?: string; quantity: number; createdAt: number }>();
+// Abandoned carts are dropped oldest first once there are 20,000.
+const carts = new LruMap<string, { visitorKey: string; productId: string; size?: string; quantity: number; createdAt: number }>(20_000);
 const CART_TTL_MS = 15 * 60_000;
 
 export function buildStoreServer(visitor: Visitor): McpServer {

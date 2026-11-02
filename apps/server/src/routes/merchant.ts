@@ -14,6 +14,8 @@ import { eventBus, type EventRow } from "../doorman/events.js";
 import { policySchema } from "../doorman/policy.js";
 import { currentDrop, expireStaleApprovals, getProduct, getRules, resetDrop, saveRules, type DropRow } from "../doorman/store.js";
 import { paypal } from "../paypal/client.js";
+import { Gate, shared } from "../lib/bounded.js";
+import { perMinute } from "../lib/limits.js";
 import { avaTranscript, runDrop, simulationRunning } from "../sim/run.js";
 
 // The drop the dashboard shows: the latest one, unless it was reset.
@@ -169,8 +171,34 @@ function merchant() {
   return merchantInfo;
 }
 
+// Every open dashboard refreshes its totals and Ava's conversation; they share one
+// database read a second however many are open.
+const sharedSummary = shared(1_000, summary);
+const sharedTranscript = shared(1_000, async () => {
+  const transcript = avaTranscript();
+  const orderIds = transcript.flatMap((t) => (t.orderId ? [t.orderId] : []));
+  const orders = orderIds.length
+    ? await db.select({ id: schema.orders.id, status: schema.orders.status, amountCents: schema.orders.amountCents }).from(schema.orders).where(inArray(schema.orders.id, orderIds))
+    : [];
+  return { transcript, orders, running: simulationRunning() };
+});
+
+// Live feed connections: each is held open, so there's a ceiling. The JSON for an
+// event is built once, not once per viewer.
+const MAX_STREAMS = 200;
+let openStreams = 0;
+const eventJson = new WeakMap<EventRow, string>();
+function toJson(row: EventRow): string {
+  let json = eventJson.get(row);
+  if (!json) eventJson.set(row, (json = JSON.stringify(row)));
+  return json;
+}
+
+// Only one rule rewrite at a time goes to Gemini.
+const compiling = new Gate(1);
+
 export const merchantRoutes = new Hono()
-  .get("/api/dashboard", async (c) => c.json(await summary()))
+  .get("/api/dashboard", async (c) => c.json(await sharedSummary()))
 
   .get("/api/merchant", async (c) => c.json(await merchant()))
 
@@ -188,20 +216,28 @@ export const merchantRoutes = new Hono()
   })
 
   // Live feed for the dashboard (Server-Sent Events).
-  .get("/api/events/stream", (c) =>
-    streamSSE(c, async (stream) => {
+  .get("/api/events/stream", (c) => {
+    if (openStreams >= MAX_STREAMS) return c.json({ error: "busy", message: "Too many dashboards open right now." }, 503);
+    openStreams += 1;
+    return streamSSE(c, async (stream) => {
       // A write can fail if the browser has just gone away; that must never take the server down.
-      const send = (row: EventRow) => void stream.writeSSE({ event: "event", data: JSON.stringify(row) }).catch(() => eventBus.off("event", send));
+      const send = (row: EventRow) => void stream.writeSSE({ event: "event", data: toJson(row) }).catch(() => eventBus.off("event", send));
+      // On shutdown the stream ends, and the browser reconnects to the new server.
+      const end = () => stream.abort();
       eventBus.on("event", send);
-      stream.onAbort(() => {
+      eventBus.once("shutdown", end);
+      try {
+        while (!stream.aborted) {
+          await stream.writeSSE({ event: "ping", data: "" });
+          await stream.sleep(15_000);
+        }
+      } finally {
         eventBus.off("event", send);
-      });
-      while (!stream.aborted) {
-        await stream.writeSSE({ event: "ping", data: "" });
-        await stream.sleep(15_000);
+        eventBus.off("shutdown", end);
+        openStreams -= 1;
       }
-    }),
-  )
+    });
+  })
 
   .get("/api/events/:id", async (c) => {
     const detail = await eventDetail(c.req.param("id"));
@@ -209,7 +245,7 @@ export const merchantRoutes = new Hono()
   })
 
   // Written on demand, so the detail panel can open instantly and show a loading state.
-  .get("/api/events/:id/explanation", async (c) => {
+  .get("/api/events/:id/explanation", perMinute(60), async (c) => {
     const id = c.req.param("id");
     const [event] = await db.select().from(schema.events).where(eq(schema.events.id, id));
     if (!event) return c.json({ error: "not_found" }, 404);
@@ -220,34 +256,27 @@ export const merchantRoutes = new Hono()
     return c.json(await explain({ event, order, timeline }));
   })
 
-  .post("/api/drop/run", async (c) => {
+  .post("/api/drop/run", perMinute(6), async (c) => {
     if (simulationRunning()) return c.json({ error: "already_running" }, 409);
     const drop = await runDrop();
     return c.json({ dropId: drop.id }, 202);
   })
 
-  .post("/api/drop/reset", async (c) => {
+  .post("/api/drop/reset", perMinute(6), async (c) => {
     if (simulationRunning()) return c.json({ error: "simulation_running" }, 409);
     await resetDrop();
     return c.json({ ok: true });
   })
 
   // Ava's conversation, with the latest status of any order she created.
-  .get("/api/drop/transcript", async (c) => {
-    const transcript = avaTranscript();
-    const orderIds = transcript.flatMap((t) => (t.orderId ? [t.orderId] : []));
-    const orders = orderIds.length
-      ? await db.select({ id: schema.orders.id, status: schema.orders.status, amountCents: schema.orders.amountCents }).from(schema.orders).where(inArray(schema.orders.id, orderIds))
-      : [];
-    return c.json({ transcript, orders, running: simulationRunning() });
-  })
+  .get("/api/drop/transcript", async (c) => c.json(await sharedTranscript()))
 
-  .post("/api/agents/:keyId/block", async (c) => {
+  .post("/api/agents/:keyId/block", perMinute(30), async (c) => {
     const agent = await setAgentBlocked(c.req.param("keyId"), true);
     return agent ? c.json({ blocked: true }) : c.json({ error: "not_found" }, 404);
   })
 
-  .post("/api/orders/:id/release", async (c) => {
+  .post("/api/orders/:id/release", perMinute(30), async (c) => {
     try {
       const order = await releaseByMerchant(c.req.param("id"));
       return c.json({ status: order.status });
@@ -263,22 +292,27 @@ export const merchantRoutes = new Hono()
   })
 
   // Plain English in, proposed settings out. Not saved until the merchant confirms with PUT.
-  .post("/api/rules/compile", async (c) => {
+  .post("/api/rules/compile", perMinute(10), async (c) => {
     if (!aiEnabled) return c.json({ error: "ai_unavailable", message: "Add GEMINI_API_KEY to use the rule writer." }, 503);
     const body = await c.req.json().catch(() => null);
     if (typeof body?.rulesText !== "string" || !body.rulesText.trim() || body.rulesText.length > 2000) {
       return c.json({ error: "invalid_rules_text" }, 400);
     }
     const { policy } = await getRules();
-    try {
-      return c.json(await compileRules(body.rulesText, policy));
-    } catch (err) {
-      console.warn("[ai] rule compile failed:", err instanceof Error ? err.message : err);
-      return c.json({ error: "compile_failed", message: "Couldn't turn that into rules. Try rewording it." }, 422);
-    }
+    return compiling.run<Response>(
+      async () => {
+        try {
+          return c.json(await compileRules(body.rulesText, policy));
+        } catch (err) {
+          console.warn("[ai] rule compile failed:", err instanceof Error ? err.message : err);
+          return c.json({ error: "compile_failed", message: "Couldn't turn that into rules. Try rewording it." }, 422);
+        }
+      },
+      () => c.json({ error: "busy", message: "Someone else is rewriting the rules right now. Try again in a few seconds." }, 503),
+    );
   })
 
-  .put("/api/rules", async (c) => {
+  .put("/api/rules", perMinute(20), async (c) => {
     const body = await c.req.json().catch(() => null);
     const policy = policySchema.safeParse(body?.policy);
     if (!policy.success || typeof body?.rulesText !== "string") return c.json({ error: "invalid_rules" }, 400);

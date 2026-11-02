@@ -38,10 +38,13 @@ export class StoreAgent {
     // Simulated network address (sent as X-Forwarded-For), so a simulated swarm
     // looks like many machines instead of one.
     private readonly ip: string | null = null,
+    // Extra headers on every request (the server's own simulator identifies itself).
+    private readonly extraHeaders: Record<string, string> = {},
   ) {}
 
   private fetch: typeof fetch = async (input, init) => {
     const headers = new Headers(init?.headers);
+    for (const [name, value] of Object.entries(this.extraHeaders)) headers.set(name, value);
     if (this.ip) headers.set("x-forwarded-for", this.ip);
     if (this.key) {
       const url = input instanceof Request ? input.url : String(input);

@@ -1,12 +1,12 @@
 // Works out who is at the door for one request: an unsigned visitor, or a
 // signed agent (and, if it presents one, the customer pass it carries).
 import { createHash } from "node:crypto";
-import { getConnInfo } from "@hono/node-server/conninfo";
 import { eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { findAgent, type AgentRow } from "../agents/registry.js";
 import { createNonceStore, hasSignature, verifyRequest } from "../agents/signatures.js";
 import { db, schema } from "../db/client.js";
+import { clientIp } from "../lib/client-ip.js";
 import { PASS_HEADER } from "./constants.js";
 import type { CustomerRow } from "./sessions.js";
 
@@ -26,17 +26,6 @@ const nonces = createNonceStore();
 
 export function hashPassToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
-}
-
-function clientIp(c: Context): string {
-  // The last entry is the one our host's proxy added; earlier entries can be faked by the client.
-  const forwarded = c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim();
-  if (forwarded) return forwarded;
-  try {
-    return getConnInfo(c).remote.address ?? "unknown";
-  } catch {
-    return "unknown";
-  }
 }
 
 export async function identifyVisitor(c: Context, body: string): Promise<Visitor | { rejected: string }> {

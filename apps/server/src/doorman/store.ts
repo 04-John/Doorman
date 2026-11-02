@@ -70,11 +70,22 @@ export async function returnStock(productId: string, quantity: number) {
 export const APPROVAL_MINUTES = 15;
 export const APPROVAL_EXPIRED = "Approval link expired";
 
+const approvalCutoff = () => new Date(Date.now() - APPROVAL_MINUTES * 60_000);
+
+// Orders that still count: anything past awaiting approval, or awaiting and not yet expired.
+const stillCounts = () => or(ne(schema.orders.status, "awaiting_approval"), gte(schema.orders.createdAt, approvalCutoff()));
+
+// Marks expired approvals as declined. It's housekeeping for the dashboard (the
+// drop-limit counts ignore expired ones anyway), so it runs at most once a minute,
+// and only when someone is using the store: no timer wakes the database.
+let lastExpiry = 0;
 export async function expireStaleApprovals() {
+  if (Date.now() - lastExpiry < 60_000) return;
+  lastExpiry = Date.now();
   await db
     .update(schema.orders)
     .set({ status: "declined", releaseReason: APPROVAL_EXPIRED, updatedAt: new Date() })
-    .where(and(eq(schema.orders.status, "awaiting_approval"), lt(schema.orders.createdAt, new Date(Date.now() - APPROVAL_MINUTES * 60_000))));
+    .where(and(eq(schema.orders.status, "awaiting_approval"), lt(schema.orders.createdAt, approvalCutoff())));
 }
 
 // Units of a drop product a customer already has in play during this drop.
@@ -97,6 +108,7 @@ export async function unitsInDrop(input: {
         eq(schema.orders.productId, input.productId),
         eq(payerColumn, payerId),
         inArray(schema.orders.status, input.statuses),
+        stillCounts(),
         input.excludeOrderId ? ne(schema.orders.id, input.excludeOrderId) : undefined,
       ),
     );
@@ -116,6 +128,7 @@ export async function customerDropOrders(drop: DropRow, payerId: string): Promis
         eq(schema.orders.productId, drop.productId),
         or(eq(schema.orders.expectedPayerId, payerId), eq(schema.orders.approvedPayerId, payerId)),
         inArray(schema.orders.status, ["awaiting_approval", "held", "charged"]),
+        stillCounts(),
       ),
     )
     .orderBy(desc(schema.orders.createdAt));

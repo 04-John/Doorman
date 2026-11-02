@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db, schema } from "../db/client.js";
 import { ApprovalError, retryInput } from "../doorman/approvals.js";
 import { currentCustomer } from "../doorman/sessions.js";
+import { perMinute } from "../lib/limits.js";
 import { currentDrop, customerDropOrders, getProduct, getRules } from "../doorman/store.js";
 import { completeWebCheckout, startWebCheckout } from "../doorman/web-checkout.js";
 import { agentBuys, DEMO_AGENTS, demoKeyId, type Errand } from "../sim/demo-agents.js";
@@ -37,16 +38,17 @@ async function alreadyHasDropLimit(payerId: string, productId: string): Promise<
 }
 
 export const shopRoutes = new Hono()
-  .post("/api/store/checkout", async (c) => {
+  // Each checkout creates a PayPal order, so one address gets a handful a minute.
+  .post("/api/store/checkout", perMinute(20), async (c) => {
     const body = cart.safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ error: "invalid_cart", issues: body.error.issues }, 400);
     return c.json(await startWebCheckout(body.data.items));
   })
 
-  .post("/api/store/checkout/:paypalOrderId/complete", async (c) => c.json(await completeWebCheckout(c.req.param("paypalOrderId"))))
+  .post("/api/store/checkout/:paypalOrderId/complete", perMinute(30), async (c) => c.json(await completeWebCheckout(c.req.param("paypalOrderId"))))
 
   // "Ask Ava to buy it": the customer's most recent live pass for one of the demo agents.
-  .post("/api/store/agent-checkout", async (c) => {
+  .post("/api/store/agent-checkout", perMinute(20), async (c) => {
     const customer = await currentCustomer(c);
     if (!customer) return c.json({ error: "login_required" }, 401);
     const body = errand.safeParse(await c.req.json().catch(() => null));
@@ -75,7 +77,7 @@ export const shopRoutes = new Hono()
   })
 
   // "Try again" after a released hold: the same agent asks for the same thing.
-  .post("/api/approvals/:token/retry", async (c) => {
+  .post("/api/approvals/:token/retry", perMinute(20), async (c) => {
     return c.json(errandReply(await agentBuys(await retryInput(c.req.param("token")))));
   })
 

@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { db, schema } from "../db/client.js";
 import { endSession, startSession } from "../doorman/sessions.js";
+import { perMinute } from "../lib/limits.js";
 import { PayPalError } from "../paypal/client.js";
 import { exchangeCode, fetchProfile, loginUrl } from "../paypal/login.js";
 
@@ -20,7 +21,7 @@ function withQuery(path: string, query: string): string {
 }
 
 export const authRoutes = new Hono()
-  .get("/auth/paypal/start", (c) => {
+  .get("/auth/paypal/start", perMinute(30), (c) => {
     const state = randomUUID();
     const next = safeNext(c.req.query("next"));
     setCookie(c, STATE_COOKIE, `${state}|${encodeURIComponent(next)}`, {
@@ -32,7 +33,7 @@ export const authRoutes = new Hono()
     return c.redirect(loginUrl(state));
   })
 
-  .get("/auth/paypal/callback", async (c) => {
+  .get("/auth/paypal/callback", perMinute(30), async (c) => {
     const { code, state, error } = c.req.query();
     const [expected, encodedNext] = (getCookie(c, STATE_COOKIE) ?? "").split("|");
     const next = safeNext(decodeURIComponent(encodedNext ?? ""));

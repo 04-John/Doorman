@@ -65,6 +65,14 @@
   - Done Nov 2: you followed the README's "Try it" steps on the live site and everything worked.
   - Done Nov 2: GitHub ran the Actions check only twice in 6 hours (GitHub delays scheduled jobs), so you added an UptimeRobot monitor (free, every 5 minutes, emails you if it's down) on `/health`. It shows Up.
   - Done Nov 2: fresh-clone test of the README passed.
+  - Done Nov 2: hardening pass (you asked for it to be solid under load):
+    - Real visitor addresses on Render (before, every visitor looked like Render's proxy, so rate limits lumped everyone together).
+    - Compiled JavaScript in production: about 80 MB instead of 220+ MB, 170 MB at the peak of a drop.
+    - Every in-memory store capped; PayPal calls time out after 20 s; at most a few Gemini calls at once.
+    - Per-address limits on the costly routes, a 256 KB request limit, cheap webhook pre-check.
+    - The Phase 1 test bench API is off in production (it could capture or void any authorization by ID).
+    - Dashboards and storefronts share one database read a second and stop polling in background tabs.
+    - Clean shutdown on redeploy. README has a "Built to hold up" section.
   - Claude: video script and shot list; Devpost text draft.
 - **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.

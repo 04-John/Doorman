@@ -1,9 +1,12 @@
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { Hono } from "hono";
 import { identifyVisitor } from "../doorman/identity.js";
+import { perMinute } from "../lib/limits.js";
 import { buildStoreServer } from "../mcp/store.js";
 
-export const mcpRoutes = new Hono().all("/mcp", async (c) => {
+// Doorman judges and records every agent request; past 600 a minute from one
+// address (its own rules allow at most 600) the server stops even recording them.
+export const mcpRoutes = new Hono().all("/mcp", perMinute(600), async (c) => {
   const raw = c.req.method === "POST" ? await c.req.text() : "";
   const visitor = await identifyVisitor(c, raw);
   if ("rejected" in visitor) {

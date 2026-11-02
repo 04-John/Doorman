@@ -114,6 +114,24 @@ Any agent can shop the store through Doorman. [`sim/agent-client.ts`](apps/serve
 3. **Use the MCP endpoint** at `POST /mcp` (Streamable HTTP). It has six tools: `search_products`, `add_to_cart`, `checkout`, `order_status`, `request_customer_link` and `collect_agent_pass`.
 4. **Get a pass.** `request_customer_link` returns a link for your customer. Once they log in with PayPal and approve, `collect_agent_pass` hands over the pass token once. Send it in the `Doorman-Pass` header on later requests.
 
+## Built to hold up
+
+The hosted demo is one small server on a free plan (512 MB of memory), so it's built to stay up under heavy or hostile traffic:
+
+- **Memory has a ceiling.** Everything held in memory is capped or expires: the per-visitor rate counters (a fixed size each, the 100,000 most recent visitors), carts, cached agent keys, AI explanations and replay-protection nonces. The server runs as compiled JavaScript: about 80 MB idle and about 170 MB at the peak of a simulated drop.
+- **Every outside call has a time limit.** PayPal calls time out after 20 seconds, and retrying is safe because every call that moves money carries a `PayPal-Request-Id`. Gemini calls time out after 15 to 30 seconds, and only a few run at once. When that limit is reached, explanations fall back to a rules-based version instead of waiting in a queue.
+- **Abuse limits.** Requests over 256 KB are refused before they're read. Each address gets a per-minute allowance on the routes that cost something: agent registration, PayPal orders, approvals, Log in with PayPal, AI calls, and the agent endpoint itself. Visitor addresses come from the host's proxies, not from headers a client can fake.
+- **The database does less.** Open dashboards and storefronts share one read a second, and background tabs stop polling. Nothing on a timer touches the database, so Neon's free compute can scale to zero when nobody's using the demo.
+- **Money is safe under concurrency.** An order is claimed in the database, so the customer's browser and PayPal's webhook can't both finish it. Stock is reserved atomically, so a drop can't oversell.
+- **Clean restarts.** On a redeploy the server finishes requests in flight, ends live feeds so dashboards reconnect, and closes its database connections.
+
+To run many servers for many stores, the next steps would be:
+
+1. Move the shared in-memory state into Redis, so any server can handle any request. That covers rate counters and replay nonces (keys that expire) and the live feed (pub/sub, or Postgres `LISTEN/NOTIFY`). Orders are already safe across servers because they're claimed in the database.
+2. Run drop simulations and AI work in a separate worker behind a queue.
+3. Archive or partition old events, and keep running totals per drop instead of counting rows.
+4. Add merchant accounts and log-in, and keep each merchant's data separate. The dashboard is deliberately open for the demo.
+
 ## Run it locally
 
 You need:

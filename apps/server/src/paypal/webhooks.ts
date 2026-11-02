@@ -69,9 +69,20 @@ const SIGNATURE_HEADERS = {
   transmission_time: "paypal-transmission-time",
 } as const;
 
+function fromPayPalCertificate(certUrl: string | undefined): boolean {
+  try {
+    const url = new URL(certUrl ?? "");
+    return url.protocol === "https:" && (url.hostname === "paypal.com" || url.hostname.endsWith(".paypal.com"));
+  } catch {
+    return false;
+  }
+}
+
 // Asks PayPal whether this delivery really came from PayPal, for our webhook.
 // The event goes back exactly as it arrived: re-encoding it can break the check.
 export async function verifyWebhook(header: (name: string) => string | undefined, rawEvent: string): Promise<boolean> {
+  // A free check first, so junk deliveries don't each cost a call to PayPal.
+  if (!fromPayPalCertificate(header(SIGNATURE_HEADERS.cert_url))) return false;
   const id = await ensureWebhook();
   if (!id) return false;
   const fields: string[] = [];

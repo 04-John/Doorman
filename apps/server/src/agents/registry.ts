@@ -1,12 +1,13 @@
 import { createPublicKey, type KeyObject } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
+import { LruMap } from "../lib/bounded.js";
 import { jwkThumbprint, type Ed25519Jwk } from "./signatures.js";
 
 export type AgentRow = typeof schema.agents.$inferSelect;
 
-// Agents are looked up on every signed request, so keep them in memory too.
-const cache = new Map<string, { agent: AgentRow; key: KeyObject }>();
+// Agents are looked up on every signed request, so the most active 5,000 are kept in memory too.
+const cache = new LruMap<string, { agent: AgentRow; key: KeyObject }>(5_000);
 
 function remember(agent: AgentRow) {
   const key = createPublicKey({ key: { ...agent.publicJwk }, format: "jwk" });

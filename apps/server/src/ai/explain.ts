@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { money } from "../doorman/engine.js";
 import type { EventRow } from "../doorman/events.js";
+import { Gate, LruMap } from "../lib/bounded.js";
 import { aiEnabled, fastest, model } from "./model.js";
 
 const tierLabel = { verified: "verified customer's agent", signed: "signed agent with no linked customer", unknown: "unknown visitor" };
@@ -46,7 +47,10 @@ function fallback({ event }: ExplainContext): string {
 }
 
 // Identical situations (say, 30 bots blocked for the same reason) share one explanation.
-const cache = new Map<string, string>();
+const cache = new LruMap<string, string>(1_000);
+// A few explanations are written at once; past that, the rules-based one is shown
+// straight away, so a burst of clicks can't use up the Gemini quota.
+const writing = new Gate(4);
 
 export async function explain(ctx: ExplainContext): Promise<{ text: string; source: "ai" | "rules" }> {
   if (ctx.event.explanation) return { text: ctx.event.explanation, source: "ai" };
@@ -56,22 +60,26 @@ export async function explain(ctx: ExplainContext): Promise<{ text: string; sour
   const key = createHash("sha256").update(prompt).digest("hex");
   let text = cache.get(key);
   if (!text) {
-    try {
-      // The light model answers in about a second, so the detail panel isn't kept waiting.
-      const result = await generateText({
-        model: model("fast"),
-        system: SYSTEM,
-        prompt: `Facts about one decision:\n${prompt}`,
-        providerOptions: fastest,
-        abortSignal: AbortSignal.timeout(15_000),
-      });
-      text = result.text.trim();
-      if (!text) throw new Error("empty explanation");
-      cache.set(key, text);
-    } catch (err) {
-      console.warn("[ai] explanation failed, using the rules-based one:", err instanceof Error ? err.message : err);
-      return { text: fallback(ctx), source: "rules" };
-    }
+    const written = await writing.run(async () => {
+      try {
+        // The light model answers in about a second, so the detail panel isn't kept waiting.
+        const result = await generateText({
+          model: model("fast"),
+          system: SYSTEM,
+          prompt: `Facts about one decision:\n${prompt}`,
+          providerOptions: fastest,
+          abortSignal: AbortSignal.timeout(15_000),
+        });
+        if (!result.text.trim()) throw new Error("empty explanation");
+        return result.text.trim();
+      } catch (err) {
+        console.warn("[ai] explanation failed, using the rules-based one:", err instanceof Error ? err.message : err);
+        return null;
+      }
+    }, () => null);
+    if (!written) return { text: fallback(ctx), source: "rules" };
+    text = written;
+    cache.set(key, text);
   }
   await db.update(schema.events).set({ explanation: text }).where(eq(schema.events.id, ctx.event.id));
   return { text, source: "ai" };

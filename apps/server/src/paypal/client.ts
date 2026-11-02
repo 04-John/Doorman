@@ -2,6 +2,10 @@ import { env } from "../env.js";
 
 const BASE_URL = "https://api-m.sandbox.paypal.com";
 
+// No call to PayPal may hang a request forever. Retrying after a timeout is safe:
+// every money-moving call carries a PayPal-Request-Id.
+export const paypalTimeout = () => AbortSignal.timeout(20_000);
+
 export class PayPalError extends Error {
   constructor(
     readonly status: number,
@@ -32,6 +36,7 @@ export async function getAppToken(): Promise<CachedToken> {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: "grant_type=client_credentials",
+    signal: paypalTimeout(),
   });
   const body = (await res.json()) as Record<string, unknown>;
   if (!res.ok) throw new PayPalError(res.status, res.headers.get("paypal-debug-id") ?? undefined, body);
@@ -66,6 +71,7 @@ export async function paypal<T>(path: string, { method = "GET", body, rawBody, i
     method,
     headers,
     body: rawBody ?? (body === undefined ? undefined : JSON.stringify(body)),
+    signal: paypalTimeout(),
   });
   const text = await res.text();
   const parsed: unknown = text ? JSON.parse(text) : undefined;

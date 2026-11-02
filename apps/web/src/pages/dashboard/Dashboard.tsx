@@ -142,12 +142,23 @@ export default function Dashboard() {
       hits.current = hits.current.filter((h) => t - h < 1000);
       setRps((prev) => [...prev, hits.current.length].slice(-48));
       setRows((prev) => (prev.some((r) => r.freshAt && t - r.freshAt > FRESH_MS) ? prev.map((r) => (r.freshAt && t - r.freshAt > FRESH_MS ? { ...r, freshAt: null } : r)) : prev));
-      if (++tick % 4 === 0) {
+      // A dashboard in a background tab doesn't ask the server for anything.
+      if (++tick % 4 === 0 && document.visibilityState === "visible") {
         void refreshSummary().catch(() => {});
         void api.transcript().then(setTranscript).catch(() => {});
       }
     }, 500);
-    return () => clearInterval(timer);
+    // Catch up straight away when the tab comes back.
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void refreshSummary().catch(() => {});
+      void api.transcript().then(setTranscript).catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [refreshSummary]);
 
   const drop = summary?.drop ?? null;

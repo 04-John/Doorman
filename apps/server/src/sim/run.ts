@@ -9,6 +9,7 @@ import type { CustomerRow } from "../doorman/sessions.js";
 import { DROP_PRODUCT_ID, startDrop, type DropRow } from "../doorman/store.js";
 import { env } from "../env.js";
 import { aiEnabled } from "../ai/model.js";
+import { simulatorHeaders } from "../lib/client-ip.js";
 import { StoreAgent } from "./agent-client.js";
 import { runAva, type TranscriptEntry } from "./ava-ai.js";
 import { demoKeyId, demoStoreAgent, ensureDemoAgents, preparePass, rememberPassToken, type DemoAgentName } from "./demo-agents.js";
@@ -59,7 +60,7 @@ async function givePass(agent: StoreAgent, agentName: DemoAgentName, buyer: Cust
 
 // Bots get addresses from the documentation-only ranges (RFC 5737), never real ones.
 async function swarm(size: number, ipFor: (i: number) => string, step: (bot: StoreAgent, i: number) => Promise<unknown>) {
-  const bots = Array.from({ length: size }, (_, i) => new StoreAgent(`http://127.0.0.1:${env.PORT}`, `bot-${i}`, null, ipFor(i)));
+  const bots = Array.from({ length: size }, (_, i) => new StoreAgent(`http://127.0.0.1:${env.PORT}`, `bot-${i}`, null, ipFor(i), simulatorHeaders()));
   await Promise.allSettled(bots.map((bot, i) => step(bot, i)));
   await Promise.allSettled(bots.map((bot) => bot.close()));
 }

@@ -1,5 +1,5 @@
 import { env } from "../env.js";
-import { PayPalError } from "./client.js";
+import { PayPalError, paypalTimeout } from "./client.js";
 
 const CONNECT_URL = "https://www.sandbox.paypal.com/connect";
 const API_URL = "https://api-m.sandbox.paypal.com";
@@ -38,6 +38,7 @@ export async function exchangeCode(code: string): Promise<string> {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: new URLSearchParams({ grant_type: "authorization_code", code }),
+    signal: paypalTimeout(),
   });
   const body = (await res.json()) as Record<string, unknown>;
   if (!res.ok) throw new PayPalError(res.status, res.headers.get("paypal-debug-id") ?? undefined, body);
@@ -56,6 +57,7 @@ interface UserInfo {
 export async function fetchProfile(customerToken: string): Promise<PayPalProfile> {
   const res = await fetch(`${API_URL}/v1/identity/oauth2/userinfo?schema=paypalv1.1`, {
     headers: { Authorization: `Bearer ${customerToken}` },
+    signal: paypalTimeout(),
   });
   const body = (await res.json()) as UserInfo;
   if (!res.ok) throw new PayPalError(res.status, res.headers.get("paypal-debug-id") ?? undefined, body);
