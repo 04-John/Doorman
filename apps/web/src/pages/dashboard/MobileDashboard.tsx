@@ -465,7 +465,10 @@ export function MobileDashboard(p: MobileDashboardProps) {
   if (view === "activity" || p.rows.length < seen.current) seen.current = p.rows.length;
   const unseen = view === "activity" ? 0 : p.rows.length - seen.current;
 
-  useEffect(() => window.scrollTo(0, 0), [view]);
+  // Braces matter: scrollTo returns a promise in newer browsers, and an effect may only return a cleanup function.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
 
   return (
     <div className="m-app" data-screen-label="M1 Dashboard">
