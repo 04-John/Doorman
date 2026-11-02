@@ -62,7 +62,8 @@
     - **README** rewritten for judges: live link, sandbox login, a 6-step walkthrough, how it works, PayPal APIs, AI, sponsor tools, run locally, deploy.
 - **Next step:**
   - You: test the live site with the README's "Try it" steps, exactly as a judge would, in a private window.
-  - You: check the repo's Actions tab shows "Keep the demo awake" running every 10 minutes.
+  - Done Nov 2: you followed the README's "Try it" steps on the live site and everything worked.
+  - Done Nov 2: GitHub ran the Actions check only twice in 6 hours (GitHub delays scheduled jobs), so you added an UptimeRobot monitor (free, every 5 minutes, emails you if it's down) on `/health`. It shows Up.
   - Claude: fresh-clone test of the README; video script and shot list; Devpost text draft.
 - **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
@@ -172,7 +173,7 @@
 - [ ] Add the live URL to the PayPal app's Log in with PayPal return URLs.
 - [x] PayPal webhooks on the live URL (order approved, authorization created and voided, capture completed and denied), with signature verification. Done Nov 1.
 - [x] Production settings: `DEMO_BUYER_PAYER_ID` = the judges' sandbox buyer (`ZTAEZCCT64MPW`, in `render.yaml`), so Ava's drop orders expect the account judges log in with. On Render the public URL and the login return URL come from the service's own address.
-- [x] Keep the free Render service awake until Dec 15: the server pings its own `/health` every 10 minutes, and a GitHub Actions workflow checks from outside (one always-on service fits Render's free 750 hours a month). Done Nov 1.
+- [x] Keep the free Render service awake until Dec 15: the server pings its own `/health` every 10 minutes, UptimeRobot checks every 5 minutes (your account, emails on failure), and a GitHub Actions workflow is a third check (one always-on service fits Render's free 750 hours a month). Done Nov 1.
 
 **You**
 - [ ] Review each screen as it lands and send fixes in one list per day.
