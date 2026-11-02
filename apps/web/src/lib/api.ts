@@ -272,6 +272,9 @@ export const api = {
   revokePass: (id: string) => request(`/api/passes/${id}/revoke`, { method: "POST" }),
 };
 
+// Ends the merchant's sign-in; the sign-in screen takes over.
+export const signOutMerchant = () => api.merchantLogout().finally(() => window.dispatchEvent(new Event(MERCHANT_SIGNED_OUT)));
+
 // Where "Log in with PayPal" should bring the customer back to.
 export function loginHref(next = location.pathname + location.search): string {
   return `/auth/paypal/start?next=${encodeURIComponent(next)}`;

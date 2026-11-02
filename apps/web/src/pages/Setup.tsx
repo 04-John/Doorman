@@ -1,7 +1,7 @@
 // Screen 5: merchant setup (Connect PayPal → Your products → Your rules) and the Rules page.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { api, type MerchantInfo, type Rules, type StoreInfo } from "../lib/api";
+import { api, signOutMerchant, type MerchantInfo, type Rules, type StoreInfo } from "../lib/api";
 import { money } from "../lib/format";
 import { Skeleton, Spinner } from "../ui/bits";
 import { MerchantTabBar, MerchantTopBar as MobileMerchantTopBar } from "../mobile/chrome";
@@ -122,6 +122,14 @@ export default function Setup({ mode = "setup" }: { mode?: "setup" | "rules" }) 
         <div className="m-fade" style={{ display: "flex", flexDirection: "column" }}>
           {content}
         </div>
+        {/* Desktop signs out from the account menu, which phones don't have. */}
+        {setup && (
+          <div className="m-pad" style={{ paddingBottom: 28 }}>
+            <button type="button" className="btn btn-secondary m-tap" style={{ width: "100%" }} onClick={() => void signOutMerchant()}>
+              Sign out of Static Supply
+            </button>
+          </div>
+        )}
         <MerchantTabBar />
       </div>
     );
