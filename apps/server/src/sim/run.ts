@@ -75,7 +75,7 @@ async function script() {
     await givePass(ava, "Ava", buyer, 15_000);
     await givePass(juniper, "Juniper", buyer, 30_000, true);
   } else {
-    log("No customer has logged in with PayPal yet, so Ava shops without a pass. Log in once on /lab.html to fix this.");
+    log("No customer has logged in with PayPal yet, so Ava shops without a pass. Link an agent from the store (/link) to fix this.");
   }
 
   log("Scalper bots arrive and start browsing");

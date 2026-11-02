@@ -64,7 +64,8 @@
   - You: test the live site with the README's "Try it" steps, exactly as a judge would, in a private window.
   - Done Nov 2: you followed the README's "Try it" steps on the live site and everything worked.
   - Done Nov 2: GitHub ran the Actions check only twice in 6 hours (GitHub delays scheduled jobs), so you added an UptimeRobot monitor (free, every 5 minutes, emails you if it's down) on `/health`. It shows Up.
-  - Claude: fresh-clone test of the README; video script and shot list; Devpost text draft.
+  - Done Nov 2: fresh-clone test of the README passed.
+  - Claude: video script and shot list; Devpost text draft.
 - **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
 
@@ -186,7 +187,7 @@
 ## Phase 4: Polish and video (Mon Nov 9 – Tue Nov 10)
 
 **Claude**
-- [ ] Clone the repo fresh and follow the README exactly. Fix anything that breaks.
+- [x] Clone the repo fresh and follow the README exactly. Fix anything that breaks. Done Nov 2 against a temporary empty database: install, database setup, PayPal key check, 15 tests, every page, the example agent and a full drop all worked. Fixed an outdated log message and added two README notes.
 - [x] README: what it is, architecture diagram, how to run, which PayPal APIs and AI tools are used and how, and the sponsor tools (AG Grid, Render). Done Nov 1.
 - [x] Testing instructions for judges (rules: required if a login is needed): the live URL, the judges' sandbox buyer email and password, and a 5-minute walkthrough. In the README, Nov 1.
 - [ ] Draft the Devpost text: problem, what it does, how it's built, the AI tools and how they're used, challenges, what's next.

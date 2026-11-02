@@ -128,12 +128,12 @@ git clone https://github.com/04-John/Doorman.git
 cd Doorman
 npm install
 cp .env.example .env     # then fill in the values; the file explains each one
-npm run db:setup         # creates the tables and the demo store
+npm run db:setup         # creates the tables and the demo store (can take a minute or two)
 npm run check:paypal     # confirms your PayPal keys work
 npm run dev              # API on :8787, web app on :5173
 ```
 
-Open **http://127.0.0.1:5173**. Use `127.0.0.1`, not `localhost`, because PayPal rejects `localhost` return URLs. `npm test` runs the signature and rules-engine tests.
+Open **http://127.0.0.1:5173**. Use `127.0.0.1`, not `localhost`, because PayPal rejects `localhost` return URLs. To give Ava a pass to shop with, link her from the store once (**Let my AI assistant buy it**). Until then she shops without one, and Doorman asks the customer to step up. `npm test` runs the signature and rules-engine tests.
 
 PayPal can only deliver webhooks to a public HTTPS address, so they're active on the hosted version only.
 
