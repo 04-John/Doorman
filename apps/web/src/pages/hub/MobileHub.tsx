@@ -23,7 +23,7 @@ function Card({ n, title, body, children }: { n: string; title: string; body: st
 export function MobileHub({ count, price, repoUrl }: { count: number; price: string; repoUrl: string }) {
   const [card, setCard] = useState(0);
   const links: [string, string][] = [
-    ["/store", "Storefront"],
+    ["/store", "Store"],
     ["/setup", "Merchant setup"],
     ["/rules", "Rules"],
     ["/link", "Link an agent"],

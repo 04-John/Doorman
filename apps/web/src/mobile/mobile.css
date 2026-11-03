@@ -317,6 +317,14 @@
   }
 }
 
+/* The merchant's account details as a bottom sheet. */
+.m-sheet {
+  background: #ffffff;
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -20px 50px rgba(21, 23, 28, 0.2);
+  animation: m-up 0.4s var(--m-ease) both;
+}
+
 /* Request detail as a bottom sheet. */
 .m-sheet-grab {
   display: flex;
@@ -419,6 +427,7 @@
   .m-push,
   .m-shell-main,
   .m-tab-badge,
+  .m-sheet,
   .sf-cart-panel {
     animation: none !important;
   }

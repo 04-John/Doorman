@@ -115,7 +115,7 @@ export default function DemoHub() {
       <footer className="hub-footer hub-gutter">
         <nav aria-label="Other screens">
           <span>Other screens:</span>
-          <Link to="/store">Storefront</Link>
+          <Link to="/store">Store</Link>
           <Link to="/setup">Merchant setup</Link>
           <Link to="/rules">Rules</Link>
           <Link to="/link">Link an agent</Link>

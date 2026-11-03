@@ -137,11 +137,6 @@ export function MobileStorefront(p: MobileStorefrontProps) {
                 </Link>
               </div>
             )}
-            {p.refusal && !p.owned && (
-              <div role="alert" className="m-fade" style={{ padding: "12px 14px", borderRadius: 14, background: "#FDEAE7", border: "1px solid #F2BBB4", color: "#8E1B12", fontSize: 14.5, lineHeight: 1.45 }}>
-                <b>Doorman stopped {p.linked?.agentName ?? "your assistant"}:</b> {p.refusal}
-              </div>
-            )}
           </section>
 
           <section id="shop" style={{ paddingTop: 34 }}>
@@ -208,29 +203,37 @@ export function MobileStorefront(p: MobileStorefrontProps) {
       <footer className="m-pad" style={{ padding: "26px 20px 24px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, fontSize: 13, color: "#6B6E76" }}>
         <span>© Static Supply · sandbox demo store</span>
         <Link to="/" className="m-hit" style={{ color: "#4A4D55", fontWeight: 500 }}>
-          Back to demo hub
+          Back to the demo overview
         </Link>
       </footer>
 
       {!p.gotYours && hero && (
-        <div className="m-actionbar">
-          <button type="button" className="m-btn m-tap" style={{ flex: 1 }} disabled={soldOut} onClick={() => p.addToCart(hero, p.size)}>
-            {soldOut ? "Sold out" : `Add to cart · ${p.size}`}
-          </button>
-          {p.linked ? (
-            <button type="button" className="m-btn m-btn-secondary m-tap" disabled={p.asking || soldOut} onClick={() => p.askAgent(hero)} style={{ maxWidth: "48%" }}>
-              <AgentAvatar name={p.linked.agentName} size={22} />
-              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.asking ? "Checking out…" : `Ask ${p.linked.agentName}`}</span>
-            </button>
-          ) : (
-            <Link to="/link" className="m-btn m-btn-secondary m-tap" style={{ fontSize: 15, color: "#15171C" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M5 21V10a7 7 0 0 1 14 0v11" stroke="#15171C" strokeWidth="2.2" />
-                <path d="M2.5 21h19" stroke="#15171C" strokeWidth="2.2" strokeLinecap="round" />
-              </svg>
-              Buy with AI
-            </Link>
+        <div className="m-actionbar" style={{ flexDirection: "column" }}>
+          {/* Right above the buttons, so a refusal shows where the customer tapped. */}
+          {p.refusal && !p.owned && (
+            <div role="alert" className="m-fade" style={{ padding: "10px 12px", borderRadius: 12, background: "#FDEAE7", border: "1px solid #F2BBB4", color: "#8E1B12", fontSize: 14, lineHeight: 1.4 }}>
+              <b>Doorman stopped {p.linked?.agentName ?? "your assistant"}:</b> {p.refusal}
+            </div>
           )}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button type="button" className="m-btn m-tap" style={{ flex: 1 }} disabled={soldOut} onClick={() => p.addToCart(hero, p.size)}>
+              {soldOut ? "Sold out" : `Add to cart · ${p.size}`}
+            </button>
+            {p.linked ? (
+              <button type="button" className="m-btn m-btn-secondary m-tap" disabled={p.asking || soldOut} onClick={() => p.askAgent(hero)} style={{ maxWidth: "48%" }}>
+                <AgentAvatar name={p.linked.agentName} size={22} />
+                <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.asking ? "Checking out…" : `Ask ${p.linked.agentName}`}</span>
+              </button>
+            ) : (
+              <Link to="/link" className="m-btn m-btn-secondary m-tap" style={{ fontSize: 15, color: "#15171C" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M5 21V10a7 7 0 0 1 14 0v11" stroke="#15171C" strokeWidth="2.2" />
+                  <path d="M2.5 21h19" stroke="#15171C" strokeWidth="2.2" strokeLinecap="round" />
+                </svg>
+                Buy with AI
+              </Link>
+            )}
+          </div>
         </div>
       )}
       <CustomerTabBar />

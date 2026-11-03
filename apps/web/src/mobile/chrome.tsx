@@ -1,7 +1,8 @@
 // Mobile app chrome: bottom tab bars and the small top bars.
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation, useSearchParams } from "react-router";
-import { LogoMark } from "../ui/chrome";
+import { AccountPanel, LogoMark, useMerchantInfo } from "../ui/chrome";
 
 function TabIcon({ d, active }: { d: string; active: boolean }) {
   return (
@@ -66,7 +67,7 @@ export function CustomerTabBar() {
     <TabBar
       label="Customer"
       tabs={[
-        { to: "/store", label: "Shop", icon: TAB_ICON.shop, active: pathname === "/store" },
+        { to: "/store", label: "Store", icon: TAB_ICON.shop, active: pathname === "/store" },
         { to: "/passes", label: "Passes", icon: TAB_ICON.passes, active: pathname === "/passes" },
       ]}
     />
@@ -83,7 +84,55 @@ export function SandboxPill() {
 }
 
 // Merchant screens: store chip on the left, sandbox tag on the right.
-export function MerchantTopBar({ right }: { right?: ReactNode }) {
+// The merchant's avatar opens the same account details as the desktop menu, as a bottom sheet.
+function AccountButton() {
+  const [open, setOpen] = useState(false);
+  const merchant = useMerchantInfo(open);
+  const sheet = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    sheet.current?.querySelector<HTMLElement>("a, button")?.focus();
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [open]);
+
+  const close = () => setOpen(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label="Account: Maya, Static Supply"
+        onClick={() => setOpen(true)}
+        className="m-hit m-tap"
+        style={{ width: 36, height: 36, flex: "none", borderRadius: "50%", border: "1px solid #E4E2DC", background: "#E9E1D3", color: "#15171C", display: "grid", placeItems: "center", fontSize: 14, fontWeight: 700, padding: 0 }}
+      >
+        M
+      </button>
+      {/* Rendered into the page body: the top bar's blur would otherwise hold a fixed sheet inside the bar. */}
+      {open &&
+        createPortal(
+            <div style={{ position: "fixed", inset: 0, zIndex: 30 }}>
+              <div onClick={close} style={{ position: "absolute", inset: 0, background: "rgba(21,23,28,.4)", animation: "dm-fade .25s ease both" }} />
+              <div ref={sheet} role="dialog" aria-modal="true" aria-label="Account" className="m-sheet" style={{ position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "88dvh", overflowY: "auto", padding: "0 8px calc(12px + var(--m-safe-b))" }}>
+                <div className="m-sheet-grab" aria-hidden="true">
+                  <span />
+                </div>
+                <AccountPanel merchant={merchant} onClose={close} roomy />
+              </div>
+            </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+// The account button is left off where the merchant isn't signed in yet.
+export function MerchantTopBar({ right, account = true }: { right?: ReactNode; account?: boolean }) {
   return (
     <header className="m-topbar" style={{ justifyContent: "space-between" }}>
       <Link to="/" aria-label="Doorman demo overview" className="m-hit" style={{ display: "flex", alignItems: "center", gap: 9, height: 36, padding: "0 12px 0 5px", borderRadius: 999, background: "#FFFFFF", border: "1px solid #E4E2DC", fontSize: 14.5, fontWeight: 600 }}>
@@ -92,7 +141,10 @@ export function MerchantTopBar({ right }: { right?: ReactNode }) {
         </span>
         Static Supply
       </Link>
-      {right ?? <SandboxPill />}
+      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {right ?? <SandboxPill />}
+        {account && <AccountButton />}
+      </span>
     </header>
   );
 }

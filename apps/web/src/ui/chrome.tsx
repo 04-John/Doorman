@@ -112,15 +112,78 @@ export function MerchantTopBar() {
 
 const menuItem = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "9px 12px", borderRadius: 8, fontSize: 14.5, color: "#15171C" } as const;
 
+// Loads the connected PayPal business account when the account details open.
+export function useMerchantInfo(open: boolean): MerchantInfo | null {
+  const [merchant, setMerchant] = useState<MerchantInfo | null>(null);
+  useEffect(() => {
+    if (open) api.merchant().then(setMerchant, () => setMerchant({ connected: false, email: null, merchantId: null }));
+  }, [open]);
+  return merchant;
+}
+
+// Who's signed in, the connected PayPal account and shortcuts: the desktop account
+// menu, and on phones the account sheet (roomy: taller rows, in a dialog rather than a menu).
+export function AccountPanel({ merchant, onClose, roomy = false }: { merchant: MerchantInfo | null; onClose: () => void; roomy?: boolean }) {
+  const item = roomy ? { ...menuItem, minHeight: 48, fontSize: 16 } : menuItem;
+  const role = roomy ? undefined : "menuitem";
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px 12px" }}>
+        <span style={{ width: 40, height: 40, borderRadius: "50%", background: "#E9E1D3", display: "grid", placeItems: "center", fontSize: 16, fontWeight: 700 }}>M</span>
+        <div>
+          <div style={{ fontSize: 15.5, fontWeight: 600 }}>Maya</div>
+          <div style={{ fontSize: 13.5, color: "#4A4D55" }}>Owner · Static Supply</div>
+        </div>
+      </div>
+      <div style={{ margin: "0 4px 6px", padding: "10px 12px", borderRadius: 10, background: "#F4F3EF", fontSize: 13.5, lineHeight: 1.45 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 600 }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: merchant?.connected === false ? "#B42318" : "#0F6B3E" }} />
+          {merchant === null ? "Checking PayPal…" : merchant.connected ? "PayPal business account connected" : "PayPal not reachable"}
+        </div>
+        {merchant?.email && <div style={{ color: "#4A4D55", marginTop: 3, overflowWrap: "anywhere" }}>{merchant.email}</div>}
+        {merchant?.merchantId && (
+          <div className="mono" style={{ color: "#6B6E76", fontSize: 12.5, marginTop: 2 }}>
+            Merchant ID {shortId(merchant.merchantId, 6, 4)}
+          </div>
+        )}
+      </div>
+      {[
+        ["/setup", "Store settings"],
+        ["/rules", "Rules"],
+        ["/store", "View store"],
+        ["/", "Demo overview"],
+      ].map(([to, label]) => (
+        <Link key={to} to={to!} role={role} onClick={onClose} className="dm-menu-item" style={item}>
+          {label}
+          <Icon d={ICON.chevronRight} color="#8E919A" size={13} />
+        </Link>
+      ))}
+      <a href={REPO_URL} target="_blank" rel="noreferrer" role={role} onClick={onClose} className="dm-menu-item" style={item}>
+        Source code on GitHub
+        <span aria-hidden="true" style={{ color: "#8E919A", fontSize: 13 }}>
+          ↗
+        </span>
+        <span className="sr-only">(opens in a new tab)</span>
+      </a>
+      <button type="button" role={role} onClick={() => void signOutMerchant()} className="dm-menu-item" style={{ ...item, width: "100%", border: 0, background: "transparent", textAlign: "left" }}>
+        Sign out
+      </button>
+      <div style={{ borderTop: "1px solid #EEEDE8", margin: "6px 4px 0", padding: "10px 8px 4px", fontSize: 12.5, lineHeight: 1.45, color: "#6B6E76" }}>
+        Demo merchant account. Sandbox only, no real money.
+      </div>
+
+    </>
+  );
+}
+
 // The merchant's avatar opens who's signed in, the connected PayPal account and shortcuts.
 function ProfileMenu() {
   const [open, setOpen] = useState(false);
-  const [merchant, setMerchant] = useState<MerchantInfo | null>(null);
+  const merchant = useMerchantInfo(open);
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    api.merchant().then(setMerchant, () => setMerchant({ connected: false, email: null, merchantId: null }));
     root.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
     const away = (e: MouseEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
     const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -177,49 +240,7 @@ function ProfileMenu() {
             animation: "dm-fade .2s ease both",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px 12px" }}>
-            <span style={{ width: 40, height: 40, borderRadius: "50%", background: "#E9E1D3", display: "grid", placeItems: "center", fontSize: 16, fontWeight: 700 }}>M</span>
-            <div>
-              <div style={{ fontSize: 15.5, fontWeight: 600 }}>Maya</div>
-              <div style={{ fontSize: 13.5, color: "#4A4D55" }}>Owner · Static Supply</div>
-            </div>
-          </div>
-          <div style={{ margin: "0 4px 6px", padding: "10px 12px", borderRadius: 10, background: "#F4F3EF", fontSize: 13.5, lineHeight: 1.45 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 600 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: merchant?.connected === false ? "#B42318" : "#0F6B3E" }} />
-              {merchant === null ? "Checking PayPal…" : merchant.connected ? "PayPal business account connected" : "PayPal not reachable"}
-            </div>
-            {merchant?.email && <div style={{ color: "#4A4D55", marginTop: 3, overflowWrap: "anywhere" }}>{merchant.email}</div>}
-            {merchant?.merchantId && (
-              <div className="mono" style={{ color: "#6B6E76", fontSize: 12.5, marginTop: 2 }}>
-                Merchant ID {shortId(merchant.merchantId, 6, 4)}
-              </div>
-            )}
-          </div>
-          {[
-            ["/setup", "Store settings"],
-            ["/rules", "Rules"],
-            ["/store", "View storefront"],
-            ["/", "Demo overview"],
-          ].map(([to, label]) => (
-            <Link key={to} to={to!} role="menuitem" onClick={close} className="dm-menu-item" style={menuItem}>
-              {label}
-              <Icon d={ICON.chevronRight} color="#8E919A" size={13} />
-            </Link>
-          ))}
-          <a href={REPO_URL} target="_blank" rel="noreferrer" role="menuitem" onClick={close} className="dm-menu-item" style={menuItem}>
-            Source code on GitHub
-            <span aria-hidden="true" style={{ color: "#8E919A", fontSize: 13 }}>
-              ↗
-            </span>
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>
-          <button type="button" role="menuitem" onClick={() => void signOutMerchant()} className="dm-menu-item" style={{ ...menuItem, width: "100%", border: 0, background: "transparent", textAlign: "left" }}>
-            Sign out
-          </button>
-          <div style={{ borderTop: "1px solid #EEEDE8", margin: "6px 4px 0", padding: "10px 8px 4px", fontSize: 12.5, lineHeight: 1.45, color: "#6B6E76" }}>
-            Demo merchant account. Sandbox only, no real money.
-          </div>
+          <AccountPanel merchant={merchant} onClose={close} />
         </div>
       )}
     </div>

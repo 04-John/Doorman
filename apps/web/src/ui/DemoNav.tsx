@@ -9,7 +9,7 @@ import "./demo-nav.css";
 
 const GROUPS = [
   { label: "Merchant", links: [["/dashboard", "Dashboard"], ["/rules", "Rules"], ["/setup", "Settings"]] },
-  { label: "Customer", links: [["/store", "Storefront"], ["/link", "Link an agent"], ["/passes", "My passes"]] },
+  { label: "Customer", links: [["/store", "Store"], ["/link", "Link an agent"], ["/passes", "My passes"]] },
 ] as const;
 
 const HEIGHT = 36;

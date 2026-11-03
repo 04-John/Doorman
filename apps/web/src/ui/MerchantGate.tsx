@@ -110,7 +110,7 @@ function SignIn({ locked, onSignedIn }: { locked: boolean; onSignedIn: () => voi
   // Phones have no demo strip, so the merchant app's top bar leads back to the overview.
   return phone ? (
     <div className="m-app m-no-tabs">
-      <MobileMerchantTopBar />
+      <MobileMerchantTopBar account={false} />
       <main style={{ flex: 1, display: "grid", placeItems: "center", padding: "8px 16px 32px" }}>{form}</main>
     </div>
   ) : (

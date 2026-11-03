@@ -373,7 +373,7 @@ export default function Storefront() {
 
       <footer className="sf-footer sf-gutter">
         <span>© Static Supply · sandbox demo store</span>
-        <Link to="/">Back to demo hub</Link>
+        <Link to="/">Back to the demo overview</Link>
       </footer>
 
       {cartOpen && <CartDrawer items={cart} setItems={setCart} dropLimit={dropLimit} onClose={closeCart} onPaid={refresh} />}

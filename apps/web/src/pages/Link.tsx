@@ -481,7 +481,7 @@ export default function LinkAgent() {
             <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
               <BigButton href="/passes">View my passes</BigButton>
               <BigButton href="/store" variant="plain">
-                Back to Static Supply
+                Back to the store
               </BigButton>
             </div>
           </>
@@ -655,7 +655,7 @@ export function Passes() {
               Link {shown.some((p) => passStatus(p) === "Active") ? "another" : "an"} agent
             </BigButton>
             <BigButton href="/store" variant="plain">
-              Back to Static Supply
+              Back to the store
             </BigButton>
           </div>
 
