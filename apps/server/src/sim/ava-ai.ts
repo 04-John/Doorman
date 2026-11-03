@@ -37,25 +37,67 @@ export const SHOPPING_TASK =
 // "failed_early" means the AI never reached the store, so a scripted run can stand in.
 export type AssistantOutcome = "done" | "failed_early" | "failed_midway";
 
+export function say(transcript: TranscriptEntry[], entry: Omit<TranscriptEntry, "at">) {
+  transcript.push({ at: new Date().toISOString(), ...entry });
+}
+
+// One call to the store over MCP, recorded in the conversation with what the store said.
+// Anything that can call the store's tools: a demo agent, or a stand-in in tests.
+export type StoreCaller = Pick<StoreAgent, "call">;
+
+export async function callAndRecord(agent: StoreCaller, transcript: TranscriptEntry[], tool: string, args: Record<string, unknown>) {
+  const { ok, data } = await agent.call(tool, args);
+  const orderId = typeof data.orderId === "string" ? data.orderId : undefined;
+  say(transcript, { from: "store", tool, ok, text: JSON.stringify({ request: args, response: data }), ...(orderId ? { orderId } : {}) });
+  return { ok, data };
+}
+
+const cartIdOf = (entry: TranscriptEntry): string | null => {
+  try {
+    const id = (JSON.parse(entry.text) as { response?: { cartId?: unknown } }).response?.cartId;
+    return typeof id === "string" ? id : null;
+  } catch {
+    return null;
+  }
+};
+
+// When the AI stops before checking out (it never reached the store, or Gemini was
+// too slow), the demo finishes the purchase the scripted way, in the same
+// conversation, so the drop still ends with an approval link: it checks out the
+// last cart the AI made, or makes one. Returns whether the checkout went through.
+export async function finishCheckout(agent: StoreCaller, name: string, transcript: TranscriptEntry[], productId: string): Promise<boolean> {
+  if (!transcript.length) say(transcript, { from: "customer", text: SHOPPING_TASK });
+  const lastCart = [...transcript].reverse().find((e) => e.from === "store" && e.tool === "add_to_cart" && e.ok);
+  let cartId = lastCart ? cartIdOf(lastCart) : null;
+  if (!cartId) {
+    const cart = await callAndRecord(agent, transcript, "add_to_cart", { productId, quantity: 1, size: "M" });
+    cartId = cart.ok && typeof cart.data.cartId === "string" ? cart.data.cartId : null;
+  }
+  const order = cartId ? await callAndRecord(agent, transcript, "checkout", { cartId }) : null;
+  say(transcript, {
+    from: "assistant",
+    text: order?.ok
+      ? `(The AI didn't answer in time, so the demo finished the checkout for ${name}.) Approve it here: ${String(order.data.approvalUrl)}`
+      : "(The AI didn't answer in time, and the store turned down the demo's checkout too.)",
+  });
+  return order?.ok ?? false;
+}
+
 export async function runAssistant(agent: StoreAgent, who: Assistant, transcript: TranscriptEntry[]): Promise<AssistantOutcome> {
-  const say = (entry: Omit<TranscriptEntry, "at">) => transcript.push({ at: new Date().toISOString(), ...entry });
   let storeCalls = 0;
 
-  // Each tool forwards to the store over MCP and records what the store said.
+  // Each tool forwards to the store and records what the store said.
   const storeTool = <S extends z.ZodType>(name: string, description: string, inputSchema: S) =>
     tool({
       description,
       inputSchema,
       execute: async (args: z.infer<S>) => {
         storeCalls++;
-        const { ok, data } = await agent.call(name, args as Record<string, unknown>);
-        const orderId = typeof data.orderId === "string" ? data.orderId : undefined;
-        say({ from: "store", tool: name, ok, text: JSON.stringify({ request: args, response: data }), ...(orderId ? { orderId } : {}) });
-        return data;
+        return (await callAndRecord(agent, transcript, name, args as Record<string, unknown>)).data;
       },
     });
 
-  say({ from: "customer", text: SHOPPING_TASK });
+  say(transcript, { from: "customer", text: SHOPPING_TASK });
   try {
     const result = await generateText({
       model: model("fast"),
@@ -74,11 +116,11 @@ export async function runAssistant(agent: StoreAgent, who: Assistant, transcript
       providerOptions: fastest,
       abortSignal: AbortSignal.timeout(120_000),
     });
-    say({ from: "assistant", text: result.text.trim() || `(${who.name} finished without a message.)` });
+    say(transcript, { from: "assistant", text: result.text.trim() || `(${who.name} finished without a message.)` });
     return "done";
   } catch (err) {
     console.warn(`[sim] AI ${who.name} stopped early:`, err instanceof Error ? err.message : err);
-    say({ from: "assistant", text: `(${who.name} stopped before finishing. The steps above still happened.)` });
+    say(transcript, { from: "assistant", text: `(${who.name} stopped before finishing. The steps above still happened.)` });
     return storeCalls === 0 ? "failed_early" : "failed_midway";
   }
 }

@@ -10,7 +10,7 @@
     "demo:agent": "tsx src/scripts/agent-demo.ts",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx --env-file=../../.env src/db/seed.ts",
-    "test": "tsx --test src/agents/signatures.test.ts src/doorman/engine.test.ts",
+    "test": "tsx --test src/agents/signatures.test.ts src/doorman/engine.test.ts src/sim/ava-ai.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -11,7 +11,7 @@ import { env } from "../env.js";
 import { aiEnabled } from "../ai/model.js";
 import { simulatorHeaders } from "../lib/client-ip.js";
 import { StoreAgent } from "./agent-client.js";
-import { runAssistant, type TranscriptEntry } from "./ava-ai.js";
+import { finishCheckout, runAssistant, type TranscriptEntry } from "./ava-ai.js";
 import { DEMO_AGENTS, demoAgentByKeyId, demoKeyId, demoStoreAgent, ensureDemoAgents, preparePass, rememberPassToken, type DemoAgentName } from "./demo-agents.js";
 
 let running = false;
@@ -34,7 +34,8 @@ async function demoAgent(name: DemoAgentName) {
   return demoStoreAgent(name);
 }
 
-// The customer the drop's assistant shops for: the configured demo buyer, else whoever logged in most recently.
+// Who the drop shops for when nobody has linked an agent yet: the configured demo
+// buyer, else whoever logged in most recently.
 async function demoBuyer(): Promise<CustomerRow | null> {
   if (env.DEMO_BUYER_PAYER_ID) {
     const [buyer] = await db.select().from(schema.customers).where(eq(schema.customers.payerId, env.DEMO_BUYER_PAYER_ID));
@@ -49,17 +50,20 @@ async function demoBuyer(): Promise<CustomerRow | null> {
   return latest ?? null;
 }
 
-// The customer's assistant is the agent they linked most recently, shopping with
-// that pass as it stands: if they revoked it or it ran out, Doorman refuses it.
-// An account that never linked one gets Ava, as if they had linked her earlier.
-async function customersAssistant(buyer: CustomerRow): Promise<{ name: DemoAgentName; pass: PassRow | null }> {
+// The drop follows whoever is trying the demo: it shops for the customer who linked
+// one of the demo agents most recently, with that agent and that pass as it stands
+// (a revoked or used-up pass is refused). Until anyone links one, it's the demo
+// buyer with Ava, as if they had linked her earlier.
+async function dropCustomer(): Promise<{ buyer: CustomerRow | null; name: DemoAgentName; pass: PassRow | null }> {
   const [latest] = await db
-    .select()
+    .select({ pass: schema.passes, customer: schema.customers })
     .from(schema.passes)
-    .where(and(eq(schema.passes.customerPayerId, buyer.payerId), eq(schema.passes.simulated, false), inArray(schema.passes.agentKeyId, LISTED.map(demoKeyId))))
+    .innerJoin(schema.customers, eq(schema.customers.payerId, schema.passes.customerPayerId))
+    .where(and(eq(schema.passes.simulated, false), inArray(schema.passes.agentKeyId, LISTED.map(demoKeyId))))
     .orderBy(desc(schema.passes.createdAt))
     .limit(1);
-  return latest ? { name: demoAgentByKeyId(latest.agentKeyId)!.name, pass: latest } : { name: "Ava", pass: null };
+  if (latest) return { buyer: latest.customer, name: demoAgentByKeyId(latest.pass.agentKeyId)!.name, pass: latest.pass };
+  return { buyer: await demoBuyer(), name: "Ava", pass: null };
 }
 
 async function giveAssistantPass(agent: StoreAgent, name: DemoAgentName, buyer: CustomerRow, pass: PassRow | null) {
@@ -100,8 +104,7 @@ async function swarm(size: number, ipFor: (i: number) => string, step: (bot: Sto
 
 async function script() {
   await ensureDemoAgents();
-  const buyer = await demoBuyer();
-  const mine = buyer ? await customersAssistant(buyer) : { name: "Ava" as const, pass: null };
+  const { buyer, ...mine } = await dropCustomer();
   const revokedName: DemoAgentName = mine.name === "Juniper" ? "Milo" : "Juniper";
   const assistant = await demoAgent(mine.name);
   const kestrel = await demoAgent("Kestrel");
@@ -154,16 +157,13 @@ async function script() {
     await bot.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 2 });
   });
 
-  // A scripted run stands in only if the AI never reached the store.
-  if ((await assistantRun) === "failed_early") {
-    log(`${mine.name} checks out (scripted)`);
-    const cart = await assistant.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1, size: "M" });
-    if (cart.ok) {
-      const order = await assistant.call("checkout", { cartId: cart.data.cartId });
-      if (order.ok) log(`${mine.name}'s approval link for the customer: ${order.data.approvalUrl}`);
-    }
-    log(`${mine.name} tries for a second hoodie`);
-    await assistant.call("add_to_cart", { productId: DROP_PRODUCT_ID, quantity: 1 });
+  // An AI that stopped before checking out gets its purchase finished for it. One
+  // that finished and chose not to buy (say, every attempt was refused) is left alone.
+  const outcome = await assistantRun;
+  const checkedOut = transcript.some((e) => e.from === "store" && e.tool === "checkout" && e.ok);
+  if (outcome !== "done" && !checkedOut) {
+    log(`${mine.name} checks out (scripted: the AI didn't get there)`);
+    await finishCheckout(assistant, mine.name, transcript, DROP_PRODUCT_ID);
   }
 
   await Promise.all([assistant.close(), kestrel.close(), revoked.close()]);

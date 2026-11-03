@@ -19,7 +19,7 @@ It's a test account with play money. Use a private or incognito window so your o
 
 The merchant side (**Dashboard**, **Rules**, **Settings**) asks for the merchant password. It's in the testing instructions of the Devpost submission. Customer pages don't need it.
 
-1. **Give an AI agent a pass, as the customer.** Open the [storefront](https://doorman-ppw2.onrender.com/store) and click **Let my AI assistant buy it**. Log in with PayPal using the sandbox account, so PayPal confirms you're a real, verified person. Choose **Ava** (or Milo or Juniper: the drop sends whichever agent you linked last), set a spending cap and how long the pass lasts, and click **Create pass**. The cap is a total for the life of the pass. (If the store already offers **Ask Ava to buy it**, someone linked her earlier; use **Link an agent** in the top bar to give her a fresh pass.)
+1. **Give an AI agent a pass, as the customer.** Open the [store](https://doorman-ppw2.onrender.com/store) and click **Let my AI assistant buy it**. Log in with PayPal using the sandbox account, so PayPal confirms you're a real, verified person. Choose **Ava** (or Milo or Juniper: the next drop shops for whoever linked an agent most recently, with that agent), set a spending cap and how long the pass lasts, and click **Create pass**. The cap is a total for the life of the pass. (If the store already offers **Ask Ava to buy it**, someone linked her earlier; use **Link an agent** in the top bar to give her a fresh pass.)
 2. **Run a limited drop, as the merchant.** Open the [dashboard](https://doorman-ppw2.onrender.com/dashboard) and click **Run the drop**. A 50-hoodie drop opens, and for about a minute and a half dozens of scalper bots and three AI agents hit the store:
    - Unsigned bots can browse but not buy, and the swarm gets throttled.
    - Juniper's revoked pass is refused (Milo plays this part if you linked Juniper).
@@ -124,7 +124,7 @@ The hosted demo is one small server on a free plan (512 MB of memory), so it's b
 - **Memory has a ceiling.** Everything held in memory is capped or expires: the per-visitor rate counters (a fixed size each, the 100,000 most recent visitors), carts, cached agent keys, AI explanations and replay-protection nonces. The server runs as compiled JavaScript: about 80 MB idle and about 170 MB at the peak of a simulated drop.
 - **Every outside call has a time limit.** PayPal calls time out after 20 seconds, and retrying is safe because every call that moves money carries a `PayPal-Request-Id`. Gemini calls time out after 15 to 30 seconds, and only a few run at once. When that limit is reached, explanations fall back to a rules-based version instead of waiting in a queue.
 - **Abuse limits.** Requests over 256 KB are refused before they're read. Each address gets a per-minute allowance on the routes that cost something: agent registration, PayPal orders, approvals, Log in with PayPal, AI calls, and the agent endpoint itself. Visitor addresses come from the host's proxies, not from headers a client can fake.
-- **The database does less.** Open dashboards and storefronts share one read a second, and background tabs stop polling. Nothing on a timer touches the database, so Neon's free compute can scale to zero when nobody's using the demo.
+- **The database does less.** Open dashboards and store pages share one read a second, and background tabs stop polling. Nothing on a timer touches the database, so Neon's free compute can scale to zero when nobody's using the demo.
 - **Money is safe under concurrency.** An order is claimed in the database, so the customer's browser and PayPal's webhook can't both finish it. Stock is reserved atomically, so a drop can't oversell.
 - **Clean restarts.** On a redeploy the server finishes requests in flight, ends live feeds so dashboards reconnect, and closes its database connections.
 - **The merchant side is private.** The dashboard, rules and settings, and every API behind them, need the merchant password. Signing in sets a signed, `HttpOnly`, `SameSite=Strict` cookie, and wrong guesses are rate-limited. The site only serves the built web app: no source maps, no server code, and a 404 for anything else (`/.env`, `/.git/…`). Pages can't be framed by other sites.
@@ -184,7 +184,7 @@ apps/server      Hono API, MCP endpoint, rules engine, PayPal integration
   src/ai         rule writer and explanations (Gemini)
   src/mcp        the store's MCP tools
   src/sim        "Run the drop" and the demo agents (Ava, Juniper, Milo, Kestrel)
-apps/web         React app: demo overview, dashboard, rules, storefront, link an agent, passes, approval
+apps/web         React app: demo overview, dashboard, rules, store, link an agent, passes, approval
 docs             design brief
 ```
 
