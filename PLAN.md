@@ -79,7 +79,8 @@
   - Done Nov 2 (from your testing): a pass's spending cap is now a **total** (it was checked per purchase, so $272 went through on a $150 pass); the drop sends **the agent the customer linked last** (it always sent Ava, and re-issued her pass after a revoke); Juniper's revoked-pass scene no longer revokes or clutters the customer's passes; a failed store call no longer stops a drop halfway; Paid rows show their checks.
   - Done Nov 3 (from your testing): the drop shops for **whoever linked an agent last**, from any PayPal account (it was fixed to the judges' account); if Gemini is too slow, the drop **finishes the checkout itself** so there's always an approval link; on phones, Doorman's refusal shows above the buttons, the merchant avatar opens an **account sheet**, and every link calls the shop **Store**.
   - Done Nov 4: **video script, research cards and Devpost text** (a private Claude artifact for you). **Live demo reset for recording**: default rules (1 per customer, unknown bots browse only), no drop, orders, activity or passes; hoodie back to 50. A backup of what was deleted is in Claude's scratchpad. Reset now also clears the assistant's conversation on the server (commit `d1ed4c6`, not pushed yet).
-  - **You:** run `git push` (it also clears the old conversation still in the live server's memory), then record.
+  - Done Nov 5: the account menu on **Rules and Settings** opens in full (it was trapped inside the top bar). Demo data wiped again (backup in Claude's scratchpad) and Reset pressed, so the dashboard, passes and conversation are empty.
+  - **You:** run `git push` for the menu fix, then record.
 - **Blocked on:** nothing.
 - **Watch:** one login attempt ended with `reason=token_exchange`. It's non-blocking; the error now shows PayPal's reason if it happens again.
 
