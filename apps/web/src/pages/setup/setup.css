@@ -1,8 +1,14 @@
 /* Merchant setup + Rules: responsive layout and motion that inline styles can't express. */
+/* No overflow here: it would trap the account menu inside the bar. Instead the bar
+   drops the store name and Sandbox tag until it has room for them (about 890px). */
 .su-topbar {
   flex: none;
   background: #15171c;
-  overflow-x: auto;
+}
+@media (max-width: 940px) {
+  .su-topbar .dm-hide-narrow {
+    display: none !important;
+  }
 }
 .su-main {
   width: 100%;
