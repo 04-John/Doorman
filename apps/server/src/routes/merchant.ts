@@ -18,7 +18,7 @@ import { currentDrop, expireStaleApprovals, getProduct, getRules, resetDrop, sav
 import { paypal } from "../paypal/client.js";
 import { Gate, shared } from "../lib/bounded.js";
 import { perMinute } from "../lib/limits.js";
-import { latestTranscript, runDrop, simulationRunning } from "../sim/run.js";
+import { clearTranscript, latestTranscript, runDrop, simulationRunning } from "../sim/run.js";
 
 // The drop the dashboard shows: the latest one, unless it was reset.
 async function shownDrop(): Promise<DropRow | undefined> {
@@ -284,6 +284,7 @@ export const merchantRoutes = new Hono()
   .post("/api/drop/reset", merchantOnly, perMinute(6), async (c) => {
     if (simulationRunning()) return c.json({ error: "simulation_running" }, 409);
     await resetDrop();
+    clearTranscript();
     return c.json({ ok: true });
   })
 

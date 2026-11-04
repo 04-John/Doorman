@@ -23,6 +23,12 @@ let transcript: TranscriptEntry[] = [];
 let people: { agent: DemoAgentName; customer: string | null } = { agent: "Ava", customer: null };
 export const latestTranscript = () => ({ transcript, ...people });
 
+// "Reset" starts the next drop clean, so every dashboard forgets the conversation too.
+export function clearTranscript() {
+  transcript = [];
+  people = { agent: "Ava", customer: null };
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const log = (msg: string) => console.log(`[sim] ${msg}`);
 
