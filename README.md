@@ -17,7 +17,7 @@ The demo runs on PayPal's sandbox. Whenever PayPal asks you to log in, use this 
 
 It's a test account with play money. Use a private or incognito window so your own PayPal login doesn't get in the way.
 
-The merchant side (**Dashboard**, **Rules**, **Settings**) asks for the merchant password. It's in the testing instructions of the Devpost submission. Customer pages don't need it.
+The merchant side (**Dashboard**, **Rules**, **Settings**) asks for the merchant password: `r9tp-9jeh-jp8t-qjnw`. Customer pages don't need it.
 
 1. **Give an AI agent a pass, as the customer.** Open the [store](https://doorman-ppw2.onrender.com/store) and click **Let my AI assistant buy it**. Log in with PayPal using the sandbox account, so PayPal confirms you're a real, verified person. Choose **Ava** (or Milo or Juniper: the next drop shops for whoever linked an agent most recently, with that agent), set a spending cap and how long the pass lasts, and click **Create pass**. The cap is a total for the life of the pass. (If the store already offers **Ask Ava to buy it**, someone linked her earlier; use **Link an agent** in the top bar to give her a fresh pass.)
 2. **Run a limited drop, as the merchant.** Open the [dashboard](https://doorman-ppw2.onrender.com/dashboard) and click **Run the drop**. A 50-hoodie drop opens, and for about a minute and a half dozens of scalper bots and three AI agents hit the store:
